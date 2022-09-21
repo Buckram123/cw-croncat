@@ -390,8 +390,11 @@ mod tests {
         let mut deps = mock_dependencies_with_balance(&coins(200, ""));
         let store = CwCroncat::default();
         mock_init(&store, deps.as_mut()).unwrap();
-        
-        let total = store.tasks_with_rules_total.may_load(deps.as_ref().storage).unwrap();
+
+        let total = store
+            .tasks_with_rules_total
+            .may_load(deps.as_ref().storage)
+            .unwrap();
         assert_eq!(total, Some(0));
     }
 }

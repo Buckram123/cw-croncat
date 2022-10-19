@@ -306,11 +306,18 @@ impl<'a> CwCroncat<'a> {
         let (next_id, slot_kind) = task.interval.next(&env, task.boundary);
 
         let recurring = task.interval == Interval::Once;
+        let enough_balance = task.verify_enough_balances(recurring);
+        if enough_balance.is_err() {
+            return Err(ContractError::CustomError {
+                val: format!("aloha {}", enough_balance.unwrap_err()),
+            });
+            // let hi = serde_json::from_str(&enough_balance.unwrap_err().to_string());
+        }
 
         // if non-recurring, exit
         if task.interval == Interval::Once
             || (task.stop_on_fail && queue_item.failed)
-            || task.verify_enough_balances(recurring).is_err()
+            || enough_balance.is_err()
             // If the next interval comes back 0, then this task should not schedule again
             || next_id == 0
         {
@@ -327,6 +334,8 @@ impl<'a> CwCroncat<'a> {
             let resp = self.remove_task(deps.storage, &task_hash, None)?;
             return Ok(Response::new()
                 .add_attribute("method", "proxy_callback")
+                .add_attribute("aloha next_id", next_id.to_string())
+                // .add_attribute("aloha enough_balance", enough_balance.to_string())
                 .add_attribute("ended_task", task_hash)
                 .add_attributes(resp.attributes)
                 .add_submessages(resp.messages)

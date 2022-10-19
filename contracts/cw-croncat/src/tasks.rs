@@ -33,6 +33,7 @@ impl<'a> CwCroncat<'a> {
             .range(deps.storage, None, None, Order::Ascending)
             .skip(from_index as usize)
             .take(limit as usize)
+            // I'm not convinced this into is actually turning it into a TaskResponse (missing amount_for_one_task)
             .map(|res| res.map(|(_k, task)| task.into()))
             .collect()
     }
@@ -91,7 +92,10 @@ impl<'a> CwCroncat<'a> {
                     .may_load(deps.storage, task_hash.as_bytes())?
             }
         };
-        Ok(res.map(Into::into))
+        if res.is_none() {
+            return Ok(None);
+        }
+        Ok(Some(TaskResponse::from(res.unwrap())))
     }
 
     /// Returns a hash computed by the input task data

@@ -6,7 +6,7 @@ use cw_croncat_core::{
 
 use crate::{ADDR_1, ADDR_2, ADDR_3};
 
-pub(crate) fn three_random_messages(denom: &str) -> TaskRequest {
+pub(crate) fn three_send_actions(denom: &str) -> TaskRequest {
     TaskRequest {
         interval: Interval::Block(3),
         boundary: None,

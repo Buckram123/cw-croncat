@@ -31,7 +31,7 @@ fn main() -> Result<()> {
     init_contracts(&mut orc, &admin_key, &admin_addr, &denom)?;
     register_agent(&mut orc, &agent_key)?;
 
-    let task_request = test_cases::three_random_messages(&denom);
+    let task_request = test_cases::three_send_actions(&denom);
     create_task(
         &mut orc,
         task_request,
@@ -41,7 +41,12 @@ fn main() -> Result<()> {
             amount: 300_000,
         }],
     )?;
+    // make sure balance is updated
+    orc.poll_for_n_blocks(1, std::time::Duration::from_millis(20_000), false)?;
     let agent_balance_before_proxy = helpers::query_balance(&mut orc, &agent_addr, &denom)?;
+
+    // wait for the task to be ready
+    orc.poll_for_n_blocks(3, std::time::Duration::from_millis(20_000), false)?;
     execute_proxy(&mut orc, &agent_key)?;
     let agent_balance_after_1_proxy = helpers::query_balance(&mut orc, &agent_addr, &denom)?;
     println!(
@@ -49,10 +54,12 @@ fn main() -> Result<()> {
         agent_balance_before_proxy - agent_balance_after_1_proxy
     );
 
+    // wait for the task to be ready
+    orc.poll_for_n_blocks(3, std::time::Duration::from_millis(20_000), false)?;
     execute_proxy(&mut orc, &agent_key)?;
     let agent_balance_after_2_proxy = helpers::query_balance(&mut orc, &agent_addr, &denom)?;
     println!(
-        "diff_first_proxy = {}",
+        "diff_second_proxy = {}",
         agent_balance_after_1_proxy - agent_balance_after_2_proxy
     );
 

@@ -307,12 +307,12 @@ impl<'a> CwCroncat<'a> {
 
         let recurring = task.interval == Interval::Once;
         let enough_balance = task.verify_enough_balances(recurring);
-        if enough_balance.is_err() {
-            return Err(ContractError::CustomError {
-                val: format!("aloha {}", enough_balance.unwrap_err()),
-            });
-            // let hi = serde_json::from_str(&enough_balance.unwrap_err().to_string());
-        }
+        // if enough_balance.is_err() {
+        //     return Err(ContractError::CustomError {
+        //         val: format!("aloha {}", enough_balance.unwrap_err()),
+        //     });
+        //     // let hi = serde_json::from_str(&enough_balance.unwrap_err().to_string());
+        // }
 
         // if non-recurring, exit
         if task.interval == Interval::Once

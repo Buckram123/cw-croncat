@@ -114,7 +114,7 @@ pub(crate) fn create_task(
         CRONCAT_NAME,
         "create_task",
         &ExecuteMsg::CreateTask { task: task_request },
-        &signer,
+        signer,
         funds,
     )?;
     orc.poll_for_n_blocks(1, std::time::Duration::from_millis(20_000), true)?;

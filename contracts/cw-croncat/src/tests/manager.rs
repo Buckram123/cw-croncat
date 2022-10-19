@@ -2236,3 +2236,92 @@ fn testing_fee_works() {
     )
     .unwrap();
 }
+
+/// Testing `amount_for_one_task` #156
+#[test]
+fn amount_for_one_task() {
+    let (mut app, cw_template_contract, _) = proper_instantiate();
+    let contract_addr = cw_template_contract.addr();
+
+    let task_request = TaskRequest {
+        interval: Interval::Block(3),
+        boundary: None,
+        stop_on_fail: false,
+        actions: vec![
+            Action {
+                msg: BankMsg::Send {
+                    to_address: "juno1njf5qv8ryfl07qgu5hqy8ywcvzwyrt4kzqp07d".to_string(),
+                    amount: coins(1001, NATIVE_DENOM),
+                }
+                .into(),
+                gas_limit: None,
+            },
+            Action {
+                msg: BankMsg::Send {
+                    to_address: "juno1pd43m659naajmn2chkt6tna0uud2ywyp5dm4h3".to_string(),
+                    amount: coins(1002, NATIVE_DENOM),
+                }
+                .into(),
+                gas_limit: None,
+            },
+            Action {
+                msg: BankMsg::Send {
+                    to_address: "juno15w7hw4klzl9j2hk4vq7r3vuhz53h3mlzug9q6s".to_string(),
+                    amount: coins(1003, NATIVE_DENOM),
+                }
+                .into(),
+                gas_limit: None,
+            },
+        ],
+        rules: None,
+        cw20_coins: vec![],
+    };
+    let msg = ExecuteMsg::CreateTask {
+        task: task_request.clone(),
+    };
+
+    app.execute_contract(
+        Addr::unchecked(ADMIN),
+        contract_addr.clone(),
+        &msg,
+        &coins(500_000, NATIVE_DENOM),
+    )
+    .unwrap();
+
+    let tasks_response: Vec<TaskResponse> = app
+        .wrap()
+        .query_wasm_smart(
+            contract_addr.clone(),
+            &QueryMsg::GetTasks {
+                from_index: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+
+    let expected_amount_for_this_task = {
+        // Gas for proxy basically "without actions"
+        let gas_base = GAS_BASE_FEE_JUNO;
+        println!("gas_base: {gas_base}");
+        // 3 actions here (task_request.actions.len())
+        let gas_for_actions = GAS_ACTION_FEE_JUNO * 3;
+        println!("gas_for_actions: {gas_for_actions}");
+        // 5% reward for agent
+        let gas_for_agent = (gas_base + gas_for_actions) * 5 / 100;
+        println!("gas_for_agent: {gas_for_agent}");
+        // sum all gas
+        let gas_sum = gas_base + gas_for_actions + gas_for_agent;
+        println!("gas_sum: {gas_sum}");
+        // Divide it by our denominator (by 9 here)
+        let gas_actual_cost = gas_sum / GAS_DENOMINATOR_DEFAULT_JUNO;
+        println!("gas_actual_cost: {gas_actual_cost}");
+
+        // sum banks and fees
+        1001 + 1002 + 1003 + gas_actual_cost
+    };
+
+    assert_eq!(
+        tasks_response[0].amount_for_one_task.native,
+        coins(expected_amount_for_this_task as u128, NATIVE_DENOM)
+    );
+}

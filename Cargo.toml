@@ -6,6 +6,7 @@ members = [
   "packages/generic-query",
   "packages/cw-rules-core",
   "ci/gas-benchmark",
+  "ci/non-ci-integrated-tests",
 ]
 
 [profile.release]

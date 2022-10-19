@@ -17,7 +17,7 @@ juno-local:
 		-p 26657:26657 \
 		-p 9090:9090 \
 		--mount type=volume,source=junod_data,target=/root \
-		ghcr.io/cosmoscontracts/juno:v10.0.2 /opt/setup_and_run.sh {{test_addrs}}
+		ghcr.io/cosmoscontracts/juno:v10.1.0 /opt/setup_and_run.sh {{test_addrs}}
 
 optimize:
 	docker run --rm -v "$(pwd)":/code \
@@ -34,3 +34,6 @@ download-deps:
 gas-benchmark: download-deps optimize juno-local
 	sleep 1 # Need to sleep so validator is created
 	VALIDATOR_ADDR=$(docker exec -i cosmwasm junod keys show validator -a) RUST_LOG=info cargo run --bin gas-benchmark
+
+non-ci-integrated: download-deps optimize juno-local
+	RUST_LOG=info cargo run --bin non-ci-integrated-tests

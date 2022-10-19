@@ -2066,6 +2066,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "non-ci-integrated-tests"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "cosm-orc",
+ "cosmwasm-std",
+ "cw-croncat",
+ "cw-croncat-core",
+ "cw-rules-core 0.1.1",
+ "cw20",
+ "cw20-base",
+ "env_logger",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "num"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

@@ -374,6 +374,7 @@ impl Task {
                     });
                 }
             } else {
+                // I'm pretty suspicious about this
                 return Err(CoreError::NotEnoughNative {
                     denom: coin.denom.clone(),
                     lack: coin.amount,

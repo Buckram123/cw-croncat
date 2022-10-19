@@ -259,6 +259,8 @@ impl<'a> CwCroncat<'a> {
             });
         }
 
+        println!("aloha gas_base_fee {:?}", c.gas_base_fee);
+        println!("aloha gas_action_fee {:?}", c.gas_action_fee);
         let (mut amount_for_one_task, gas_amount) = task.is_valid_msg_calculate_usage(
             deps.api,
             &env.contract.address,
@@ -267,11 +269,16 @@ impl<'a> CwCroncat<'a> {
             c.gas_base_fee,
             c.gas_action_fee,
         )?;
+        println!("aloha gas_amount {:?}", gas_amount);
+        println!("aloha agent_fee {:?}", c.agent_fee);
         let gas_price = calculate_required_amount(gas_amount, c.agent_fee)?;
+        println!("aloha gas_price {:?}", gas_price);
         let price = c.gas_fraction.calculate(gas_price, 1)?;
+        println!("aloha price {:?}", price);
         amount_for_one_task
             .native
             .find_checked_add(&coin(price, &c.native_denom))?;
+        println!("aloha amount_for_one_task {:?}", amount_for_one_task);
 
         let item = Task {
             funds_withdrawn_recurring: Uint128::zero(),

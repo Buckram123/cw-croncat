@@ -26,6 +26,8 @@ impl<'a> CwCroncat<'a> {
             agents_eject_threshold: c.agents_eject_threshold,
             native_denom: c.native_denom,
             agent_fee: c.agent_fee,
+            gas_base_fee: c.gas_base_fee,
+            gas_action_fee: c.gas_action_fee,
             gas_fraction: c.gas_fraction,
             proxy_callback_gas: c.proxy_callback_gas,
             slot_granularity: c.slot_granularity,

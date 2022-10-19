@@ -174,6 +174,8 @@ pub struct GetConfigResponse {
     pub agent_active_indices: Vec<(SlotType, u32, u32)>,
     pub agents_eject_threshold: u64,
     pub agent_fee: u64,
+    pub gas_base_fee: u64,
+    pub gas_action_fee: u64,
     pub gas_fraction: GasFraction,
     pub proxy_callback_gas: u32,
     pub slot_granularity: u64,

@@ -571,7 +571,7 @@ fn proxy_callback_fail_cases() -> StdResult<()> {
     let mut has_submsg_method: bool = false;
     let mut has_reply_success: bool = false;
     let attributes = vec![
-        ("method", "remove_task"), // the last method
+        ("method", "remove_taskzzz"), // the last method
         ("slot_id", "12346"),
         ("slot_kind", "Block"),
         ("task_hash", task_id_str.as_str().clone()),
@@ -671,7 +671,7 @@ fn proxy_callback_fail_cases() -> StdResult<()> {
     let mut has_submsg_method: bool = false;
     let mut has_reply_success: bool = false;
     let attributes = vec![
-        ("method", "remove_task"), // the last method
+        ("method", "remove_taskzzz"), // the last method
         ("ended_task", task_id_str.as_str().clone()),
     ];
 

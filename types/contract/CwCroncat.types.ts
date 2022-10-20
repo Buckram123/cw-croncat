@@ -234,6 +234,8 @@ export interface GetConfigResponse {
   agent_fee: number;
   agents_eject_threshold: number;
   cw_rules_addr: Addr;
+  gas_action_fee: number;
+  gas_base_fee: number;
   gas_fraction: GasFraction;
   min_tasks_per_agent: number;
   native_denom: string;
@@ -283,6 +285,7 @@ export interface GetSlotIdsResponse {
 }
 export interface TaskResponse {
   actions: ActionForEmpty[];
+  amount_for_one_task: GenericBalance;
   boundary?: Boundary | null;
   interval: Interval;
   owner_id: Addr;

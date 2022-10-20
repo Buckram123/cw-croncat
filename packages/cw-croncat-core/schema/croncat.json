@@ -862,6 +862,8 @@
         "agent_fee",
         "agents_eject_threshold",
         "cw_rules_addr",
+        "gas_action_fee",
+        "gas_base_fee",
         "gas_fraction",
         "min_tasks_per_agent",
         "native_denom",
@@ -906,6 +908,16 @@
         },
         "cw_rules_addr": {
           "$ref": "#/definitions/Addr"
+        },
+        "gas_action_fee": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "gas_base_fee": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
         },
         "gas_fraction": {
           "$ref": "#/definitions/GasFraction"
@@ -1569,6 +1581,7 @@
       "type": "object",
       "required": [
         "actions",
+        "amount_for_one_task",
         "interval",
         "owner_id",
         "stop_on_fail",
@@ -1582,6 +1595,9 @@
           "items": {
             "$ref": "#/definitions/Action_for_Empty"
           }
+        },
+        "amount_for_one_task": {
+          "$ref": "#/definitions/GenericBalance"
         },
         "boundary": {
           "anyOf": [

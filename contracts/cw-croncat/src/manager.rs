@@ -187,7 +187,7 @@ impl<'a> CwCroncat<'a> {
         // Add the messages, reply handler responsible for task rescheduling
         let final_res = Response::new()
             .add_attribute("method", "proxy_call")
-            .add_attribute("aloha fee_price", fee_price.to_string())
+            .add_attribute("fee_price", fee_price.to_string())
             .add_attribute("agent", info.sender)
             .add_attribute("slot_id", slot_id.to_string())
             .add_attribute("slot_kind", format!("{:?}", slot_type))
@@ -334,7 +334,6 @@ impl<'a> CwCroncat<'a> {
             let resp = self.remove_task(deps.storage, &task_hash, None)?;
             return Ok(Response::new()
                 .add_attribute("method", "proxy_callback")
-                .add_attribute("aloha next_id", next_id.to_string())
                 // .add_attribute("aloha enough_balance", enough_balance.to_string())
                 .add_attribute("ended_task", task_hash)
                 .add_attributes(resp.attributes)

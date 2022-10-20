@@ -519,13 +519,13 @@ impl<'a> CwCroncat<'a> {
         // setup sub-msgs for returning any remaining total_deposit to the owner
         if !task.total_deposit.native.is_empty() {
             Ok(Response::new()
-                .add_attribute("method", "remove_taskz")
+                .add_attribute("method", "remove_task")
                 .add_submessage(SubMsg::new(BankMsg::Send {
                     to_address: task.owner_id.into(),
                     amount: task.total_deposit.native,
                 })))
         } else {
-            Ok(Response::new().add_attribute("method", "remove_taskzz"))
+            Ok(Response::new().add_attribute("method", "remove_task"))
         }
     }
 

@@ -116,6 +116,7 @@ fn everything_can_be_de_serialized() {
         }),
         stop_on_fail: true,
         total_deposit: vec![coin(5, "earth")],
+        amount_for_one_task: Default::default(),
         total_cw20_deposit: vec![],
         actions: vec![],
         rules: None,

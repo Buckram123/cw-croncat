@@ -10,7 +10,7 @@ use cw_croncat_core::msg::{
     AgentTaskResponse, ExecuteMsg, GetAgentIdsResponse, QueryMsg, TaskRequest, TaskResponse,
     TaskWithRulesResponse,
 };
-use cw_croncat_core::types::{Action, AgentResponse, Boundary, Interval};
+use cw_croncat_core::types::{Action, AgentResponse, Boundary, GenericBalance, Interval};
 use cw_multi_test::Executor;
 use cw_rules_core::types::{HasBalanceGte, Rule};
 
@@ -2235,6 +2235,91 @@ fn testing_fee_works() {
         &[],
     )
     .unwrap();
+}
+
+#[test]
+fn mikedotexe() -> StdResult<()> {
+    let (mut app, cw_template_contract, _) = proper_instantiate();
+    let contract_addr = cw_template_contract.addr();
+    let proxy_call_msg = ExecuteMsg::ProxyCall { task_hash: None };
+    let validator = String::from("you");
+    let amount = coin(3, NATIVE_DENOM);
+    // let stake = StakingMsg::Delegate { validator, amount };
+    // let msg: CosmosMsg = stake.clone().into();
+
+    let create_task_msg = ExecuteMsg::CreateTask {
+        task: TaskRequest {
+            interval: Interval::Immediate,
+            boundary: Some(Boundary::Height {
+                start: None,
+                end: None,
+            }),
+            stop_on_fail: false,
+            actions: vec![Action {
+                msg: BankMsg::Send {
+                    to_address: "juno1njf5qv8ryfl07qgu5hqy8ywcvzwyrt4kzqp07d".to_string(),
+                    amount: vec![Coin {
+                        denom: "atom".to_string(),
+                        amount: Uint128::from(1001u32),
+                    }],
+                }
+                .into(),
+                gas_limit: None,
+            }],
+            rules: None,
+            cw20_coins: vec![],
+        },
+    };
+    let task_id_str =
+        "95c916a53fa9d26deef094f7e1ee31c00a2d47b8bf474b2e06d39aebfb1fecc7".to_string();
+
+    // quick agent register
+    // let msg = ExecuteMsg::RegisterAgent {
+    //     payable_account_id: Some(AGENT_BENEFICIARY.to_string()),
+    // };
+
+    // create task, so any slot actually exists
+    let res = app
+        .execute_contract(
+            Addr::unchecked(ANYONE),
+            contract_addr.clone(),
+            &create_task_msg,
+            &coins(300000, NATIVE_DENOM),
+        )
+        .unwrap();
+    println!("aloha res {:#?}", res);
+    // Assert task hash is returned as part of event attributes
+    let mut has_created_hash: bool = false;
+    for e in res.events {
+        for a in e.clone().attributes {
+            println!("aloha e {:#?}", e.clone());
+            if a.key == "task_hash" && a.value == task_id_str.clone() {
+                has_created_hash = true;
+            }
+        }
+    }
+    // assert!(has_created_hash);
+    let task: Option<TaskResponse> = app
+        .wrap()
+        .query_wasm_smart(
+            contract_addr.clone(),
+            &QueryMsg::GetTask {
+                task_hash: "6adefda2cfa5292dea30ff8a8ff92b9e0953d4bcb64fbd336978237ffb92a493"
+                    .to_string(),
+            },
+        )
+        .unwrap();
+    println!("aloha task {:#?}", task.clone());
+    // assert_eq!(
+    //     task.unwrap().total_deposit[0].amount,
+    //     Uint128::from((gas_for_one + agent_fee) / GAS_DENOMINATOR_DEFAULT_JUNO + extra)
+    // );
+    println!(
+        "aloha default for GenericBalance {:?}",
+        GenericBalance::default()
+    );
+
+    Ok(())
 }
 
 /// Testing `amount_for_one_task` #156

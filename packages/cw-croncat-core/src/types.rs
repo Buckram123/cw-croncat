@@ -226,7 +226,7 @@ impl TaskRequest {
     ) -> Result<(GenericBalance, u64), CoreError> {
         let mut gas_amount: u64 = base_gas;
         let mut amount_for_one_task = GenericBalance::default();
-        println!("aloha amount_for_one_task {:?}", amount_for_one_task);
+        // println!("aloha amount_for_one_task {:?}", amount_for_one_task);
 
         for action in self.actions.iter() {
             // checked for cases, where task creator intentionaly tries to overflow
@@ -291,11 +291,10 @@ impl TaskRequest {
                     if amount.iter().any(|coin| coin.amount.is_zero()) {
                         return Err(CoreError::InvalidAction {});
                     }
-                    println!("aloha amount {:?}", amount);
-                    println!("aloha bank before {:?}", amount_for_one_task);
-                    let res = amount_for_one_task.checked_add_native(amount);
-                    println!("aloha bank after {:#?}", res);
-                    res.unwrap()
+                    // println!("aloha amount {:?}", amount);
+                    // println!("aloha bank before {:?}", amount_for_one_task);
+                    amount_for_one_task.checked_add_native(amount)?;
+                    // println!("aloha bank after {:#?}", res);
                 }
                 CosmosMsg::Bank(_) => {
                     // Restrict bank msg for time being, so contract doesnt get drained, however could allow an escrow type setup

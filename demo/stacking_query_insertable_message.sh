@@ -83,7 +83,7 @@ INSERTABLE_ROLL='{
                     "key": "staked"
                   },
                   {
-                    "key": "addr"
+                    "key": "address"
                   }
                 ],
                 "path_to_query_value": [

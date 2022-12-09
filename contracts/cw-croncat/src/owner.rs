@@ -1,18 +1,16 @@
 use crate::balancer::BalancerMode;
 use crate::error::ContractError;
-use crate::helpers::has_cw_coins;
 use crate::state::{Config, CwCroncat};
 use cosmwasm_std::{
     has_coins, to_binary, BankMsg, Coin, Deps, DepsMut, Env, MessageInfo, Order, Response,
     StdResult, SubMsg, Uint64, WasmMsg,
 };
-use cw20::{Balance, Cw20ExecuteMsg};
+use cw20::{Balance, Cw20CoinVerified, Cw20ExecuteMsg};
 use cw_croncat_core::msg::{
     BalancesResponse, CwCroncatResponse, ExecuteMsg, GetBalancesResponse, GetConfigResponse,
     GetWalletBalancesResponse, RoundRobinBalancerModeResponse, SlotResponse,
     SlotWithQueriesResponse,
 };
-use cw_croncat_core::traits::FindAndMutate;
 
 impl<'a> CwCroncat<'a> {
     pub(crate) fn query_config(&self, deps: Deps) -> StdResult<GetConfigResponse> {
@@ -34,18 +32,72 @@ impl<'a> CwCroncat<'a> {
             gas_base_fee: c.gas_base_fee,
             gas_action_fee: c.gas_action_fee,
             cw20_whitelist: c.cw20_whitelist,
-            available_balance: c.available_balance,
-            staked_balance: c.staked_balance,
             limit: c.limit,
         })
     }
 
-    pub(crate) fn query_balances(&self, deps: Deps) -> StdResult<GetBalancesResponse> {
+    pub(crate) fn query_balances(
+        &self,
+        deps: Deps,
+        from_index: Option<u64>,
+        limit: Option<u64>,
+    ) -> StdResult<GetBalancesResponse> {
         let c: Config = self.config.load(deps.storage)?;
+
+        let from_index = from_index.unwrap_or_default();
+        let limit = limit.unwrap_or(c.limit);
+
+        let available_native_balance = self
+            .availible_native_balance
+            .range(deps.storage, None, None, Order::Ascending)
+            .skip(from_index as usize)
+            .take(limit as usize)
+            .map(|res| match res {
+                Ok((denom, amount)) => Ok(Coin { denom, amount }),
+                Err(err) => Err(err),
+            })
+            .collect::<StdResult<Vec<Coin>>>()?;
+
+        let available_cw20_balance = self
+            .available_cw20_balance
+            .range(deps.storage, None, None, Order::Ascending)
+            .skip(from_index as usize)
+            .take(limit as usize)
+            .map(|res| match res {
+                Ok((address, amount)) => Ok(Cw20CoinVerified { address, amount }),
+                Err(err) => Err(err),
+            })
+            .collect::<StdResult<Vec<Cw20CoinVerified>>>()?;
+
+        let staked_native_balance = self
+            .staked_native_balance
+            .range(deps.storage, None, None, Order::Ascending)
+            .skip(from_index as usize)
+            .take(limit as usize)
+            .map(|res| match res {
+                Ok((denom, amount)) => Ok(Coin { denom, amount }),
+                Err(err) => Err(err),
+            })
+            .collect::<StdResult<Vec<Coin>>>()?;
+
+        let staked_cw20_balance = self
+            .staked_cw20_balance
+            .range(deps.storage, None, None, Order::Ascending)
+            .skip(from_index as usize)
+            .take(limit as usize)
+            .map(|res| match res {
+                Ok((address, amount)) => Ok(Cw20CoinVerified { address, amount }),
+                Err(err) => Err(err),
+            })
+            .collect::<StdResult<Vec<Cw20CoinVerified>>>()?;
+
         Ok(GetBalancesResponse {
             native_denom: c.native_denom,
-            available_balance: c.available_balance,
-            staked_balance: c.staked_balance,
+            available_native_balance,
+            available_cw20_balance,
+
+            staked_native_balance,
+            staked_cw20_balance,
             cw20_whitelist: c.cw20_whitelist,
         })
     }
@@ -57,7 +109,7 @@ impl<'a> CwCroncat<'a> {
         wallet: String,
     ) -> StdResult<GetWalletBalancesResponse> {
         let addr = deps.api.addr_validate(&wallet)?;
-        let balances = self.balances.may_load(deps.storage, &addr)?;
+        let balances = self.users_balances.may_load(deps.storage, &addr)?;
         Ok(GetWalletBalancesResponse {
             cw20_balances: balances.unwrap_or_default(),
         })
@@ -178,7 +230,7 @@ impl<'a> CwCroncat<'a> {
         account_id: String,
     ) -> Result<Response, ContractError> {
         let account_id = deps.api.addr_validate(&account_id)?;
-        let mut config = self.config.load(deps.storage)?;
+        let config = self.config.load(deps.storage)?;
 
         // // Check if is owner OR the treasury account making the transfer request
         // if let Some(treasury_id) = config.treasury_id.clone() {
@@ -225,7 +277,9 @@ impl<'a> CwCroncat<'a> {
                         }
 
                         // Update internal registry balance
-                        config.available_balance.checked_sub_native(&bal)?;
+                        for coin in bal.iter() {
+                            self.subtract_availible_native(deps.storage, coin)?;
+                        }
                         Ok(SubMsg::new(BankMsg::Send {
                             to_address: account_id.clone().into(),
                             amount: bal,
@@ -233,8 +287,11 @@ impl<'a> CwCroncat<'a> {
                     }
                     Balance::Cw20(token) => {
                         // check has enough
-                        let bal = token.clone();
-                        if !has_cw_coins(&config.available_balance.cw20, &bal) {
+                        let avail_bal = self
+                            .available_cw20_balance
+                            .may_load(deps.storage, &token.address)?
+                            .unwrap_or_default();
+                        if avail_bal < token.amount {
                             has_fund_err = true;
                             // TODO: refactor to not need
                             return Ok(SubMsg::new(BankMsg::Send {
@@ -244,14 +301,14 @@ impl<'a> CwCroncat<'a> {
                         }
 
                         // Update internal registry balance
-                        config.available_balance.cw20.find_checked_sub(&bal)?;
+                        self.subtract_availible_cw20(deps.storage, token)?;
 
                         let msg = Cw20ExecuteMsg::Transfer {
                             recipient: account_id.clone().into(),
-                            amount: bal.amount,
+                            amount: token.amount,
                         };
                         Ok(SubMsg::new(WasmMsg::Execute {
-                            contract_addr: bal.address.to_string(),
+                            contract_addr: token.address.to_string(),
                             msg: to_binary(&msg)?,
                             funds: vec![],
                         }))
@@ -266,9 +323,6 @@ impl<'a> CwCroncat<'a> {
                 val: "Not enough funds".to_string(),
             });
         }
-
-        // Update balances in config
-        self.config.save(deps.storage, &config)?;
 
         Ok(Response::new()
             .add_attribute("method", "move_balance")
@@ -328,7 +382,7 @@ impl<'a> CwCroncat<'a> {
             .collect();
 
         let balances: Vec<BalancesResponse> = self
-            .balances
+            .users_balances
             .range(deps.storage, None, None, Order::Ascending)
             .skip(from_index_unwrap as usize)
             .take(limit_unwrap as usize)

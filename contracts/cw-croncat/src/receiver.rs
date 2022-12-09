@@ -16,7 +16,7 @@ impl<'a> CwCroncat<'a> {
         let coin_address = info.sender;
 
         // Updating user balance
-        let new_balances = self.balances.update(
+        let new_balances = self.users_balances.update(
             deps.storage,
             &sender,
             |balances| -> Result<_, ContractError> {
@@ -30,14 +30,13 @@ impl<'a> CwCroncat<'a> {
         )?;
 
         // Updating contract balance
-        self.config
-            .update(deps.storage, |mut c| -> Result<_, ContractError> {
-                c.available_balance.checked_add_cw20(&[Cw20CoinVerified {
-                    address: coin_address,
-                    amount: msg.amount,
-                }])?;
-                Ok(c)
-            })?;
+        self.add_availible_cw20(
+            deps.storage,
+            &Cw20CoinVerified {
+                address: coin_address,
+                amount: msg.amount,
+            },
+        )?;
 
         let total_cw20_string: Vec<String> = new_balances.iter().map(ToString::to_string).collect();
         Ok(Response::new()

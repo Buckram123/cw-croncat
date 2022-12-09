@@ -233,7 +233,7 @@ impl<'a> CwCroncat<'a> {
                 })
             }
             // update user balances
-            self.balances.update(
+            self.users_balances.update(
                 deps.storage,
                 owner_id,
                 |balances| -> Result<_, ContractError> {
@@ -296,12 +296,9 @@ impl<'a> CwCroncat<'a> {
         let recurring = item.interval != Interval::Once;
         item.verify_enough_balances(recurring)?;
         // Add the attached balance into available_balance
-        let cfg = self
-            .config
-            .update(deps.storage, |mut c| -> Result<_, ContractError> {
-                c.available_balance.checked_add_native(&info.funds)?;
-                Ok(c)
-            })?;
+        for coin in info.funds.iter() {
+            self.add_availible_native(deps.storage, coin)?;
+        }
 
         let hash = item.to_hash();
 
@@ -484,7 +481,7 @@ impl<'a> CwCroncat<'a> {
         };
 
         // return any remaining total_cw20_deposit to the owner
-        self.balances.update(
+        self.users_balances.update(
             storage,
             &task.owner_id,
             |balances| -> Result<_, ContractError> {
@@ -494,12 +491,9 @@ impl<'a> CwCroncat<'a> {
             },
         )?;
         // remove from the total available_balance
-        self.config
-            .update(storage, |mut c| -> Result<_, ContractError> {
-                c.available_balance
-                    .checked_sub_native(&task.total_deposit.native)?;
-                Ok(c)
-            })?;
+        for coin in task.total_deposit.native.iter() {
+            self.subtract_availible_native(storage, coin)?;
+        }
         // setup sub-msgs for returning any remaining total_deposit to the owner
         if !task.total_deposit.native.is_empty() {
             Ok(Response::new()
@@ -555,12 +549,12 @@ impl<'a> CwCroncat<'a> {
         }
 
         // Add the attached balance into available_balance
-        let mut c: Config = self.config.load(deps.storage)?;
-        c.available_balance.checked_add_native(&info.funds)?;
+        for coin in info.funds.iter() {
+            self.add_availible_native(deps.storage, coin)?;
+        }
         task.total_deposit.checked_add_native(&info.funds)?;
 
         // update the task and the config
-        self.config.save(deps.storage, &c)?;
         self.tasks.save(deps.storage, &hash_vec, &task)?;
 
         // return the task total
@@ -606,7 +600,7 @@ impl<'a> CwCroncat<'a> {
         })?;
 
         // update user balances
-        self.balances.update(
+        self.users_balances.update(
             deps.storage,
             &info.sender,
             |balances| -> Result<_, ContractError> {
@@ -650,7 +644,7 @@ impl<'a> CwCroncat<'a> {
         };
 
         // update user and croncat manager balances
-        let new_balances = self.balances.update(
+        let new_balances = self.users_balances.update(
             deps.storage,
             &wallet,
             |balances| -> Result<_, ContractError> {
@@ -660,11 +654,9 @@ impl<'a> CwCroncat<'a> {
                 Ok(balances)
             },
         )?;
-        self.config
-            .update(deps.storage, |mut c| -> Result<_, ContractError> {
-                c.available_balance.checked_sub_cw20(&withdraws)?;
-                Ok(c)
-            })?;
+        for coin in withdraws.iter() {
+            self.subtract_availible_cw20(deps.storage, coin)?;
+        }
 
         let msgs = {
             let mut msgs = Vec::with_capacity(withdraws.len());

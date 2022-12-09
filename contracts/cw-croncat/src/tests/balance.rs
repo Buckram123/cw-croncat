@@ -4,7 +4,7 @@ use crate::state::{Config, TaskInfo};
 use crate::tests::helpers::{default_task, AGENT0, AGENT1, AGENT2, AGENT3, AGENT4};
 use cosmwasm_std::testing::{mock_dependencies_with_balance, mock_env};
 use cosmwasm_std::{coins, Addr};
-use cw_croncat_core::types::{GasFraction, GenericBalance, SlotType};
+use cw_croncat_core::types::{GasFraction, SlotType};
 
 use crate::CwCroncat;
 
@@ -18,8 +18,6 @@ fn mock_config() -> Config {
         min_tasks_per_agent: 3,
         agent_active_indices: Vec::<(SlotType, u32, u32)>::with_capacity(0),
         agents_eject_threshold: 600, // how many slots an agent can miss before being ejected. 10 * 60 = 1hr
-        available_balance: GenericBalance::default(),
-        staked_balance: GenericBalance::default(),
         agent_fee: 5,
         gas_fraction: GasFraction {
             numerator: 1,

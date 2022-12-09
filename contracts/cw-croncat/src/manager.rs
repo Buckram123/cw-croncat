@@ -454,12 +454,6 @@ impl<'a> CwCroncat<'a> {
                 val: "Contract paused".to_string(),
             });
         }
-
-        if c.available_balance.native.is_empty() {
-            return Err(ContractError::CustomError {
-                val: "Not enough available balance for sending agent reward".to_string(),
-            });
-        }
         Ok(())
     }
 

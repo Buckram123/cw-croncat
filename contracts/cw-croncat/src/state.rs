@@ -1,5 +1,5 @@
 use crate::{balancer::RoundRobinBalancer, ContractError};
-use cosmwasm_std::{Addr, Deps, StdResult, Storage, Timestamp};
+use cosmwasm_std::{Addr, Deps, StdResult, Storage, Timestamp, Uint128};
 use cw2::ContractVersion;
 use cw20::Cw20CoinVerified;
 use cw_storage_plus::{Deque, Index, IndexList, IndexedMap, Item, Map, MultiIndex};
@@ -9,10 +9,10 @@ use serde::{Deserialize, Serialize};
 use crate::helpers::Task;
 use cw_croncat_core::{
     query::CroncatQuerier,
-    types::{Agent, GasFraction, GenericBalance, SlotType},
+    types::{Agent, GasFraction, SlotType},
 };
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Config {
     // Runtime
     pub paused: bool,
@@ -48,8 +48,6 @@ pub struct Config {
     // pub treasury_id: Option<Addr>,
     pub cw20_whitelist: Vec<Addr>, // TODO: Consider fee structure for whitelisted CW20s
     pub native_denom: String,
-    pub available_balance: GenericBalance, // tasks + rewards balances
-    pub staked_balance: GenericBalance, // surplus that is temporary staking (to be used in conjunction with external treasury)
 
     // The default amount of tasks to query
     pub limit: u64,
@@ -134,8 +132,29 @@ pub struct CwCroncat<'a> {
     // Once an agent joins, fulfilling the need, this value changes to None
     pub agent_nomination_begin_time: Item<'a, Option<Timestamp>>,
 
+    // Tasks + rewards balances
+    /// Availible native balance of the contract
+    /// Key - Denom
+    /// Value - Amount
+    pub availible_native_balance: Map<'a, &'a str, Uint128>,
+    /// Availible cw20 balance of the contract
+    /// Key: Cw20 Addr
+    /// Value: Amount
+    pub available_cw20_balance: Map<'a, &'a Addr, Uint128>,
+
+    // surplus that is temporary staking (to be used in conjunction with external treasury)
+    /// Staked native amounts by the contract
+    /// Key - Denom
+    /// Value - Amount
+    pub staked_native_balance: Map<'a, &'a str, Uint128>,
+
+    /// Staked cw20 amounts by the contract
+    /// Key: Cw20 Addr
+    /// Value: Amount
+    pub staked_cw20_balance: Map<'a, &'a Addr, Uint128>,
+
     pub balancer: RoundRobinBalancer,
-    pub balances: Map<'a, &'a Addr, Vec<Cw20CoinVerified>>,
+    pub users_balances: Map<'a, &'a Addr, Vec<Cw20CoinVerified>>,
 }
 
 impl Default for CwCroncat<'static> {
@@ -182,8 +201,12 @@ impl<'a> CwCroncat<'a> {
             reply_queue: Map::new("reply_queue"),
             reply_index: Item::new("reply_index"),
             agent_nomination_begin_time: Item::new("agent_nomination_begin_time"),
+            availible_native_balance: Map::new("availible_native_balance"),
+            available_cw20_balance: Map::new("availible_cw20_balance"),
+            staked_native_balance: Map::new("staked_native_balance"),
+            staked_cw20_balance: Map::new("staked_cw20_balance"),
             balancer: RoundRobinBalancer::default(),
-            balances: Map::new("balances"),
+            users_balances: Map::new("balances"),
         }
     }
 

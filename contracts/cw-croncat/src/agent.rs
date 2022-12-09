@@ -250,12 +250,10 @@ impl<'a> CwCroncat<'a> {
         // This will send all token balances to Agent
         let (messages, balances) = send_tokens(&agent.payable_account_id, &agent.balance)?;
         agent.balance.checked_sub_generic(&balances)?;
-        let mut config = self.config.load(storage)?;
-        config
-            .available_balance
-            .checked_sub_native(&balances.native)?;
+        for coin in balances.native {
+            self.subtract_availible_native(storage, &coin)?;
+        }
         self.agents.save(storage, agent_id, &agent)?;
-        self.config.save(storage, &config)?;
 
         Ok(messages)
     }

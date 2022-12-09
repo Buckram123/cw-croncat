@@ -227,12 +227,19 @@ fn move_balances_native() {
 
     // it worked, let's query the state
     let res_bal = store
-        .query(deps.as_ref(), mock_env(), QueryMsg::GetBalances {})
+        .query(
+            deps.as_ref(),
+            mock_env(),
+            QueryMsg::GetBalances {
+                from_index: None,
+                limit: None,
+            },
+        )
         .unwrap();
     let balances: GetBalancesResponse = from_binary(&res_bal).unwrap();
     assert_eq!(
         vec![coin(199999998, NATIVE_DENOM), coin(1000, "meow")],
-        balances.available_balance.native
+        balances.available_native_balance
     );
 }
 

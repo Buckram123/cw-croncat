@@ -921,9 +921,15 @@ fn check_remove_create() -> StdResult<()> {
     // Check the contract total balance has decreased from the removed task
     let balances: GetBalancesResponse = app
         .wrap()
-        .query_wasm_smart(&contract_addr.clone(), &QueryMsg::GetBalances {})
+        .query_wasm_smart(
+            &contract_addr.clone(),
+            &QueryMsg::GetBalances {
+                from_index: None,
+                limit: None,
+            },
+        )
         .unwrap();
-    assert_eq!(balances.available_balance.native, coins(1, NATIVE_DENOM));
+    assert_eq!(balances.available_native_balance, coins(1, NATIVE_DENOM));
 
     // Check the slots correctly removed the task
     let slot_ids: GetSlotIdsResponse = app
@@ -1014,11 +1020,17 @@ fn check_refill_create() -> StdResult<()> {
     // Check the balance has increased to include the new refilled total
     let balances: GetBalancesResponse = app
         .wrap()
-        .query_wasm_smart(&contract_addr.clone(), &QueryMsg::GetBalances {})
+        .query_wasm_smart(
+            &contract_addr.clone(),
+            &QueryMsg::GetBalances {
+                from_index: None,
+                limit: None,
+            },
+        )
         .unwrap();
     assert_eq!(
         coins(315010, NATIVE_DENOM),
-        balances.available_balance.native
+        balances.available_native_balance
     );
 
     Ok(())

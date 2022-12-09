@@ -1,5 +1,4 @@
 use crate::error::ContractError;
-use crate::helpers::GenericBalance;
 use crate::state::{Config, CwCroncat};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::{
@@ -32,12 +31,6 @@ impl<'a> CwCroncat<'a> {
         info: MessageInfo,
         msg: InstantiateMsg,
     ) -> Result<Response, ContractError> {
-        // keep tally of balances initialized
-        let available_balance = GenericBalance {
-            native: info.funds,
-            cw20: Default::default(),
-        };
-
         let owner_id = if let Some(owner_id) = msg.owner_id {
             deps.api.addr_validate(&owner_id)?
         } else {
@@ -63,8 +56,6 @@ impl<'a> CwCroncat<'a> {
             min_tasks_per_agent: 3,
             agent_active_indices: vec![(SlotType::Block, 0, 0), (SlotType::Cron, 0, 0)],
             agents_eject_threshold: 600, // how many slots an agent can miss before being ejected. 10 * 60 = 1hr
-            available_balance,
-            staked_balance: GenericBalance::default(),
             agent_fee: 5,
             gas_fraction: GasFraction {
                 numerator: 1,
@@ -92,6 +83,12 @@ impl<'a> CwCroncat<'a> {
         self.reply_index.save(deps.storage, &Default::default())?;
         self.agent_nomination_begin_time.save(deps.storage, &None)?;
         self.tasks_with_queries_total.save(deps.storage, &0)?;
+
+        // keep tally of balances initialized
+        for coin in info.funds {
+            self.availible_native_balance
+                .save(deps.storage, &coin.denom, &coin.amount)?;
+        }
 
         // all instantiated data
         Ok(Response::new()
@@ -181,7 +178,9 @@ impl<'a> CwCroncat<'a> {
     pub fn query(&mut self, deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         match msg {
             QueryMsg::GetConfig {} => to_binary(&self.query_config(deps)?),
-            QueryMsg::GetBalances {} => to_binary(&self.query_balances(deps)?),
+            QueryMsg::GetBalances { from_index, limit } => {
+                to_binary(&self.query_balances(deps, from_index, limit)?)
+            }
 
             QueryMsg::GetAgent { account_id } => {
                 to_binary(&self.query_get_agent(deps, env, account_id)?)

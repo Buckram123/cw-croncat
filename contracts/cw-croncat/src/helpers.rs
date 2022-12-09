@@ -6,7 +6,8 @@ use crate::state::{Config, QueueItem};
 use crate::ContractError::AgentNotRegistered;
 use crate::{ContractError, CwCroncat};
 use cosmwasm_std::{
-    coin, to_binary, Addr, Api, BankMsg, Coin, CosmosMsg, Env, StdResult, Storage, SubMsg, WasmMsg,
+    coin, to_binary, Addr, Api, BankMsg, Coin, CosmosMsg, Env, StdError, StdResult, Storage,
+    SubMsg, Uint128, WasmMsg,
 };
 use cw20::{Cw20CoinVerified, Cw20ExecuteMsg};
 use cw_croncat_core::msg::ExecuteMsg;
@@ -74,15 +75,6 @@ pub(crate) fn send_tokens(
     coins.cw20 = cw20_balance.to_vec();
     msgs.append(&mut cw20_msgs?);
     Ok((msgs, coins))
-}
-
-/// has_cw_coins returns true if the list of CW20 coins has at least the required amount
-pub(crate) fn has_cw_coins(coins: &[Cw20CoinVerified], required: &Cw20CoinVerified) -> bool {
-    coins
-        .iter()
-        .find(|c| c.address == required.address)
-        .map(|m| m.amount >= required.amount)
-        .unwrap_or(false)
 }
 
 impl<'a> CwCroncat<'a> {
@@ -199,19 +191,19 @@ impl<'a> CwCroncat<'a> {
         let task_hash = queue_item.task_hash.unwrap();
         let mut task = self.get_task_by_hash(storage, &task_hash)?;
         if ok {
-            let mut config = self.config.load(storage)?;
             let action_idx = queue_item.action_idx;
             let action = &task.actions[action_idx as usize];
 
             // update task balances and contract balances
             if let Some(sent) = action.bank_sent() {
                 task.total_deposit.native.checked_sub_coins(sent)?;
-                config.available_balance.checked_sub_native(sent)?;
+                for coin in sent {
+                    self.subtract_availible_native(storage, coin)?;
+                }
             } else if let Some(sent) = action.cw20_sent(api) {
                 task.total_deposit.cw20.find_checked_sub(&sent)?;
-                config.available_balance.cw20.find_checked_sub(&sent)?;
+                self.subtract_availible_cw20(storage, &sent)?;
             };
-            self.config.save(storage, &config)?;
             if task.with_queries() {
                 self.tasks_with_queries.save(storage, &task_hash, &task)?;
             } else {
@@ -219,6 +211,66 @@ impl<'a> CwCroncat<'a> {
             }
         }
         Ok(task)
+    }
+
+    pub(crate) fn subtract_availible_native(
+        &self,
+        storage: &mut dyn Storage,
+        coin: &Coin,
+    ) -> Result<Uint128, ContractError> {
+        let new_bal = self
+            .availible_native_balance
+            .update(storage, &coin.denom, |bal| {
+                bal.unwrap_or_default()
+                    .checked_sub(coin.amount)
+                    .map_err(StdError::overflow)
+            })?;
+        Ok(new_bal)
+    }
+
+    pub(crate) fn subtract_availible_cw20(
+        &self,
+        storage: &mut dyn Storage,
+        cw20: &Cw20CoinVerified,
+    ) -> Result<Uint128, ContractError> {
+        let new_bal = self
+            .available_cw20_balance
+            .update(storage, &cw20.address, |bal| {
+                bal.unwrap_or_default()
+                    .checked_sub(cw20.amount)
+                    .map_err(StdError::overflow)
+            })?;
+        Ok(new_bal)
+    }
+
+    pub(crate) fn add_availible_native(
+        &self,
+        storage: &mut dyn Storage,
+        coin: &Coin,
+    ) -> Result<Uint128, ContractError> {
+        let new_bal = self
+            .availible_native_balance
+            .update(storage, &coin.denom, |bal| {
+                bal.unwrap_or_default()
+                    .checked_add(coin.amount)
+                    .map_err(StdError::overflow)
+            })?;
+        Ok(new_bal)
+    }
+
+    pub(crate) fn add_availible_cw20(
+        &self,
+        storage: &mut dyn Storage,
+        cw20: &Cw20CoinVerified,
+    ) -> Result<Uint128, ContractError> {
+        let new_bal = self
+            .available_cw20_balance
+            .update(storage, &cw20.address, |bal| {
+                bal.unwrap_or_default()
+                    .checked_add(cw20.amount)
+                    .map_err(StdError::overflow)
+            })?;
+        Ok(new_bal)
     }
 }
 

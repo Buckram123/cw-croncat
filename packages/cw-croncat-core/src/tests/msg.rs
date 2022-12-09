@@ -1,4 +1,4 @@
-use cosmwasm_std::{coin, coins, Addr, BankMsg, CosmosMsg, Timestamp, Uint64};
+use cosmwasm_std::{coin, coins, Addr, BankMsg, CosmosMsg, Timestamp, Uint128, Uint64};
 use cw20::Cw20CoinVerified;
 
 use crate::{
@@ -76,15 +76,21 @@ fn everything_can_be_de_serialized() {
         gas_base_fee: 1,
         gas_action_fee: 2,
         cw20_whitelist: vec![],
-        available_balance: GenericBalance::default(),
-        staked_balance: GenericBalance::default(),
         limit: 100,
     }
     .into();
     let balance_response = GetBalancesResponse {
         native_denom: "some".to_string(),
-        available_balance: generic_balance.clone(),
-        staked_balance: generic_balance.clone(),
+        available_native_balance: vec![coin(5, "bob")],
+        available_cw20_balance: vec![Cw20CoinVerified {
+            address: Addr::unchecked("bob"),
+            amount: Uint128::new(5),
+        }],
+        staked_native_balance: vec![coin(5, "bob")],
+        staked_cw20_balance: vec![Cw20CoinVerified {
+            address: Addr::unchecked("bob"),
+            amount: Uint128::new(5),
+        }],
         cw20_whitelist: vec![Addr::unchecked("bob")],
     }
     .into();

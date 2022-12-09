@@ -9,7 +9,6 @@ pub mod receiver;
 pub mod slots;
 pub mod state;
 pub mod tasks;
-pub mod traits;
 
 #[cfg(test)]
 mod tests;

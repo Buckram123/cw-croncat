@@ -1,5 +1,4 @@
 use crate::error::ContractError;
-use crate::state::Config;
 use crate::tests::helpers::{add_little_time, proper_instantiate};
 use crate::CwCroncat;
 use cosmwasm_std::testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR};
@@ -8,8 +7,8 @@ use cosmwasm_std::{
     StakingMsg, StdResult, Storage,
 };
 use cw_croncat_core::msg::{
-    AgentResponse, AgentTaskResponse, ExecuteMsg, GetAgentIdsResponse, InstantiateMsg, QueryMsg,
-    TaskRequest, TaskResponse,
+    AgentResponse, AgentTaskResponse, ExecuteMsg, GetAgentIdsResponse, GetBalancesResponse,
+    InstantiateMsg, QueryMsg, TaskRequest, TaskResponse,
 };
 use cw_croncat_core::types::{Action, Agent, AgentStatus, GasFraction, GenericBalance, Interval};
 use cw_multi_test::{App, AppResponse, BankSudo, Executor, SudoMsg};
@@ -266,14 +265,17 @@ fn test_instantiate_sets_balance() {
         )
         .unwrap();
 
-    let config: Config = from_slice(
-        &app.wrap()
-            .query_wasm_raw(&croncat, b"config")
-            .unwrap()
-            .unwrap(),
-    )
-    .unwrap();
-    assert_eq!(config.available_balance.native, sent_funds)
+    let balances: GetBalancesResponse = app
+        .wrap()
+        .query_wasm_smart(
+            &croncat,
+            &QueryMsg::GetBalances {
+                from_index: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(balances.available_native_balance, sent_funds)
 }
 
 #[test]

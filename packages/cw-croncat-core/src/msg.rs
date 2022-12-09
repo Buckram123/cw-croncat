@@ -32,7 +32,7 @@ use serde::{Deserialize, Serialize};
 // }
 
 // Exporting a nice schema
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
 #[serde(rename_all = "PascalCase")]
 pub struct Croncat {
     pub(crate) agent: Option<Agent>,
@@ -127,7 +127,10 @@ pub enum ExecuteMsg {
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     GetConfig {},
-    GetBalances {},
+    GetBalances {
+        from_index: Option<u64>,
+        limit: Option<u64>,
+    },
     GetAgent {
         account_id: String,
     },
@@ -168,7 +171,7 @@ pub enum QueryMsg {
     },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
 pub struct GetConfigResponse {
     pub paused: bool,
     pub owner_id: Addr,
@@ -189,8 +192,6 @@ pub struct GetConfigResponse {
 
     pub cw20_whitelist: Vec<Addr>,
     pub native_denom: String,
-    pub available_balance: GenericBalance, // tasks + rewards balances
-    pub staked_balance: GenericBalance, // surplus that is temporary staking (to be used in conjunction with external treasury)
 
     // The default amount of tasks to query
     pub limit: u64,
@@ -199,8 +200,10 @@ pub struct GetConfigResponse {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct GetBalancesResponse {
     pub native_denom: String,
-    pub available_balance: GenericBalance,
-    pub staked_balance: GenericBalance,
+    pub available_native_balance: Vec<Coin>,
+    pub available_cw20_balance: Vec<Cw20CoinVerified>,
+    pub staked_native_balance: Vec<Coin>,
+    pub staked_cw20_balance: Vec<Cw20CoinVerified>,
     pub cw20_whitelist: Vec<Addr>,
 }
 
@@ -301,7 +304,7 @@ pub struct TaskWithQueriesResponse {
     pub queries: Option<Vec<CroncatQuery>>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
 pub struct CwCroncatResponse {
     pub config: GetConfigResponse,
 

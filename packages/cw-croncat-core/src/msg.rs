@@ -1,6 +1,5 @@
 use crate::types::{
-    Action, AgentStatus, Boundary, BoundaryValidated, GasFraction, GenericBalance, Interval, Task,
-    Transform,
+    Action, AgentStatus, Boundary, BoundaryValidated, GasFraction, Interval, Task, Transform,
 };
 use crate::types::{Agent, SlotType};
 use cosmwasm_std::{Addr, Coin, Timestamp, Uint64};
@@ -97,7 +96,9 @@ pub enum ExecuteMsg {
     UnregisterAgent {
         from_behind: Option<bool>,
     },
-    WithdrawReward {},
+    WithdrawReward {
+        limit: Option<u64>,
+    },
 
     CreateTask {
         task: TaskRequest,
@@ -218,12 +219,11 @@ pub struct GetAgentIdsResponse {
     pub pending: Vec<Addr>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct AgentResponse {
     // This field doesn't exist in the Agent struct and is the only one that differs
     pub status: AgentStatus,
     pub payable_account_id: Addr,
-    pub balance: GenericBalance,
     pub total_tasks_executed: u64,
     pub last_executed_slot: u64,
     pub register_start: Timestamp,

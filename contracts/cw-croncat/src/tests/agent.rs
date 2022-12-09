@@ -10,7 +10,7 @@ use cw_croncat_core::msg::{
     AgentResponse, AgentTaskResponse, ExecuteMsg, GetAgentIdsResponse, GetBalancesResponse,
     InstantiateMsg, QueryMsg, TaskRequest, TaskResponse,
 };
-use cw_croncat_core::types::{Action, Agent, AgentStatus, GasFraction, GenericBalance, Interval};
+use cw_croncat_core::types::{Action, Agent, AgentStatus, GasFraction, Interval};
 use cw_multi_test::{App, AppResponse, BankSudo, Executor, SudoMsg};
 
 use super::helpers::{
@@ -411,7 +411,6 @@ fn register_agent() {
         Addr::unchecked(AGENT_BENEFICIARY),
         agent_info.payable_account_id
     );
-    assert_eq!(GenericBalance::default(), agent_info.balance);
     assert_eq!(0, agent_info.total_tasks_executed);
     assert_eq!(12345, agent_info.last_executed_slot);
     assert_eq!(blk_time, agent_info.register_start);
@@ -565,7 +564,7 @@ fn withdraw_agent_balance() {
         .unwrap();
 
     // Fails for non-existent agents
-    let wthdrw_msg = ExecuteMsg::WithdrawReward {};
+    let wthdrw_msg = ExecuteMsg::WithdrawReward { limit: None };
     let update_err = app
         .execute_contract(
             Addr::unchecked(AGENT0),

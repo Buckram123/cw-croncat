@@ -1,4 +1,4 @@
-use crate::state::{Config, QueueItem};
+use crate::state::{CoinByOwner, Config, QueueItem};
 // use cosmwasm_std::Binary;
 // use cosmwasm_std::StdError;
 // use thiserror::Error;
@@ -38,44 +38,6 @@ pub(crate) fn vect_difference<T: std::clone::Clone + std::cmp::PartialEq>(
 //     }
 //     Some(Coin::new(u128::from_str(amount).unwrap(), denom))
 // }
-
-// Helper to distribute funds/tokens
-pub(crate) fn send_tokens(
-    to: &Addr,
-    balance: &GenericBalance,
-) -> StdResult<(Vec<SubMsg>, GenericBalance)> {
-    let native_balance = &balance.native;
-    let mut coins: GenericBalance = GenericBalance::default();
-    let mut msgs: Vec<SubMsg> = if native_balance.is_empty() {
-        vec![]
-    } else {
-        coins.native = native_balance.to_vec();
-        vec![SubMsg::new(BankMsg::Send {
-            to_address: to.into(),
-            amount: native_balance.to_vec(),
-        })]
-    };
-
-    let cw20_balance = &balance.cw20;
-    let cw20_msgs: StdResult<Vec<_>> = cw20_balance
-        .iter()
-        .map(|c| {
-            let msg = Cw20ExecuteMsg::Transfer {
-                recipient: to.into(),
-                amount: c.amount,
-            };
-            let exec = SubMsg::new(WasmMsg::Execute {
-                contract_addr: c.address.to_string(),
-                msg: to_binary(&msg)?,
-                funds: vec![],
-            });
-            Ok(exec)
-        })
-        .collect();
-    coins.cw20 = cw20_balance.to_vec();
-    msgs.append(&mut cw20_msgs?);
-    Ok((msgs, coins))
-}
 
 impl<'a> CwCroncat<'a> {
     pub fn get_agent_status(
@@ -198,11 +160,11 @@ impl<'a> CwCroncat<'a> {
             if let Some(sent) = action.bank_sent() {
                 task.total_deposit.native.checked_sub_coins(sent)?;
                 for coin in sent {
-                    self.subtract_availible_native(storage, coin)?;
+                    self.sub_availible_native(storage, coin)?;
                 }
             } else if let Some(sent) = action.cw20_sent(api) {
                 task.total_deposit.cw20.find_checked_sub(&sent)?;
-                self.subtract_availible_cw20(storage, &sent)?;
+                self.sub_availible_cw20(storage, &sent)?;
             };
             if task.with_queries() {
                 self.tasks_with_queries.save(storage, &task_hash, &task)?;
@@ -213,7 +175,7 @@ impl<'a> CwCroncat<'a> {
         Ok(task)
     }
 
-    pub(crate) fn subtract_availible_native(
+    pub(crate) fn sub_availible_native(
         &self,
         storage: &mut dyn Storage,
         coin: &Coin,
@@ -228,7 +190,7 @@ impl<'a> CwCroncat<'a> {
         Ok(new_bal)
     }
 
-    pub(crate) fn subtract_availible_cw20(
+    pub(crate) fn sub_availible_cw20(
         &self,
         storage: &mut dyn Storage,
         cw20: &Cw20CoinVerified,
@@ -271,6 +233,95 @@ impl<'a> CwCroncat<'a> {
                     .map_err(StdError::overflow)
             })?;
         Ok(new_bal)
+    }
+
+    pub(crate) fn add_agent_native(
+        &self,
+        storage: &mut dyn Storage,
+        agent_addr: &Addr,
+        coin: &Coin,
+    ) -> StdResult<CoinByOwner> {
+        let new_bal = self.agent_balances_native.update(
+            storage,
+            (agent_addr, &coin.denom),
+            |bal| -> StdResult<CoinByOwner> {
+                let mut bal = bal.unwrap_or(CoinByOwner {
+                    owner: agent_addr.clone(),
+                    denom: coin.denom.clone(),
+                    amount: Default::default(),
+                });
+                bal.amount = bal.amount.checked_add(coin.amount)?;
+                Ok(bal)
+            },
+        )?;
+        Ok(new_bal)
+    }
+
+    // Helper to distribute funds/tokens
+    pub(crate) fn agent_withdraw_messages(
+        &self,
+        storage: &mut dyn Storage,
+        agent_addr: &Addr,
+        to: &Addr,
+        native_keys: Vec<String>,
+        cw20_keys: Vec<Addr>,
+    ) -> StdResult<(Vec<SubMsg>, Vec<Coin>, Vec<Cw20CoinVerified>)> {
+        let mut native_coins = Vec::with_capacity(native_keys.len());
+        let mut cw20_coins = Vec::with_capacity(cw20_keys.len());
+        let mut messages = Vec::with_capacity(cw20_keys.len() + 1);
+
+        for native_key in native_keys {
+            let old = self
+                .agent_balances_native
+                .load(storage, (agent_addr, &native_key))?;
+
+            self.agent_balances_native.replace(
+                storage,
+                (agent_addr, &native_key),
+                None,
+                Some(&old),
+            )?;
+            if !old.amount.is_zero() {
+                native_coins.push(coin(old.amount.u128(), &old.denom));
+            }
+        }
+        if !native_coins.is_empty() {
+            messages.push(SubMsg::new(BankMsg::Send {
+                to_address: to.to_string(),
+                amount: native_coins.clone(),
+            }));
+        }
+
+        for cw20_key in cw20_keys {
+            let old = self
+                .agent_balances_cw20
+                .load(storage, (agent_addr, &cw20_key))?;
+            self.agent_balances_cw20
+                .replace(storage, (agent_addr, &cw20_key), None, Some(&old))?;
+            cw20_coins.push(Cw20CoinVerified {
+                address: old.address,
+                amount: old.amount,
+            });
+        }
+
+        let cw20_msgs: StdResult<Vec<_>> = cw20_coins
+            .iter()
+            .map(|c| {
+                let msg = Cw20ExecuteMsg::Transfer {
+                    recipient: to.to_string(),
+                    amount: c.amount,
+                };
+                let exec = SubMsg::new(WasmMsg::Execute {
+                    contract_addr: c.address.to_string(),
+                    msg: to_binary(&msg)?,
+                    funds: vec![],
+                });
+                Ok(exec)
+            })
+            .collect();
+        messages.extend(cw20_msgs?);
+
+        Ok((messages, native_coins, cw20_coins))
     }
 }
 

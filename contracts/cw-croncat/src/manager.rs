@@ -21,7 +21,7 @@ impl<'a> CwCroncat<'a> {
         env: Env,
     ) -> Result<Response, ContractError> {
         self.check_ready_for_proxy_call(deps.as_ref(), &info)?;
-        let agent = self.check_agent(deps.as_ref().storage, &info)?;
+        self.check_agent(deps.storage, &info.sender, env.block.height)?;
 
         let cfg: Config = self.config.load(deps.storage)?;
 
@@ -161,13 +161,11 @@ impl<'a> CwCroncat<'a> {
         // Add submessages for all actions
         let next_idx = self.rq_next_id(deps.storage)?;
         let mut task = self.tasks.load(deps.storage, &hash)?;
-        let mut agent = agent;
-        agent.update(env.block.height);
         let (sub_msgs, fee_price) = proxy_call_submsgs_price(&task, cfg, next_idx)?;
         task.total_deposit.native.find_checked_sub(&fee_price)?;
-        agent.balance.native.find_checked_add(&fee_price)?;
+        // Add balance to the agent
+        self.add_agent_native(deps.storage, &info.sender, &fee_price)?;
         self.tasks.save(deps.storage, &hash, &task)?;
-        self.agents.save(deps.storage, &info.sender, &agent)?;
         // Keep track for later scheduling
         let self_addr = env.contract.address;
         self.rq_push(
@@ -206,7 +204,7 @@ impl<'a> CwCroncat<'a> {
         task_hash: String,
     ) -> Result<Response, ContractError> {
         self.check_ready_for_proxy_call(deps.as_ref(), &info)?;
-        let agent = self.check_agent(deps.as_ref().storage, &info)?;
+        self.check_agent(deps.storage, &info.sender, env.block.height)?;
         let hash = task_hash.as_bytes();
 
         let cfg: Config = self.config.load(deps.storage)?;
@@ -266,16 +264,15 @@ impl<'a> CwCroncat<'a> {
             }
         };
 
-        let mut agent = agent;
-        agent.update(env.block.height);
-        agent.balance.native.find_checked_add(&fee_price)?;
+        // Add balance to the agent
+        self.add_agent_native(deps.storage, &info.sender, &fee_price)?;
+
         self.tasks_with_queries
             .update(deps.storage, hash, |task| -> Result<_, ContractError> {
                 let mut task = task.ok_or(ContractError::NoTaskFound {})?;
                 task.total_deposit.native.find_checked_sub(&fee_price)?;
                 Ok(task)
             })?;
-        self.agents.save(deps.storage, &info.sender, &agent)?;
         // Keep track for later scheduling
         self.rq_push(
             deps.storage,
@@ -459,20 +456,23 @@ impl<'a> CwCroncat<'a> {
 
     fn check_agent(
         &mut self,
-        storage: &dyn Storage,
-        info: &MessageInfo,
+        storage: &mut dyn Storage,
+        agent_addr: &Addr,
+        last_executed_slot: u64,
     ) -> Result<Agent, ContractError> {
         // only registered agent signed, because micropayments will benefit long term
-        let agent = match self.agents.may_load(storage, &info.sender)? {
-            Some(agent) => agent,
-            None => {
-                return Err(ContractError::AgentNotRegistered {});
+        let agent = self.agents.update(storage, agent_addr, |ag| match ag {
+            Some(mut agent) => {
+                agent.update(last_executed_slot);
+                Ok(agent)
             }
-        };
+            None => Err(ContractError::AgentNotRegistered {}),
+        })?;
+
         let active_agents: Vec<Addr> = self.agent_active_queue.load(storage)?;
 
         // make sure agent is active
-        if !active_agents.contains(&info.sender) {
+        if !active_agents.contains(agent_addr) {
             return Err(ContractError::AgentNotRegistered {});
         }
         Ok(agent)

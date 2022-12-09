@@ -37,13 +37,10 @@ pub enum AgentStatus {
     Nominated,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct Agent {
     // Where rewards get transferred
     pub payable_account_id: Addr,
-
-    // accrued reward balance
-    pub balance: GenericBalance,
 
     // stats
     pub total_tasks_executed: u64,

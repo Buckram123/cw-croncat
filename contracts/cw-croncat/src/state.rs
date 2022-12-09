@@ -1,8 +1,8 @@
 use crate::{balancer::RoundRobinBalancer, ContractError};
-use cosmwasm_std::{Addr, Deps, StdResult, Storage, Timestamp, Uint128};
+use cosmwasm_std::{Addr, Coin, Deps, StdResult, Storage, Timestamp, Uint128};
 use cw2::ContractVersion;
 use cw20::Cw20CoinVerified;
-use cw_storage_plus::{Deque, Index, IndexList, IndexedMap, Item, Map, MultiIndex};
+use cw_storage_plus::{Deque, Index, IndexList, IndexedMap, Item, Map, MultiIndex, UniqueIndex};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -94,6 +94,44 @@ pub fn token_owner_idx(_pk: &[u8], d: &Task) -> Addr {
     d.owner_id.clone()
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+pub struct CoinByOwner {
+    pub owner: Addr,
+    pub denom: String,
+    pub amount: Uint128,
+}
+
+pub struct NativeBalanceIndexes<'a> {
+    pub owner: MultiIndex<'a, Addr, CoinByOwner, String>,
+    pub owner_denom: UniqueIndex<'a, (Addr, String), CoinByOwner, Coin>,
+}
+
+impl<'a> IndexList<CoinByOwner> for NativeBalanceIndexes<'a> {
+    fn get_indexes(&'_ self) -> Box<dyn Iterator<Item = &'_ dyn Index<CoinByOwner>> + '_> {
+        let v: Vec<&dyn Index<CoinByOwner>> = vec![&self.owner_denom];
+        Box::new(v.into_iter())
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+pub struct Cw20ByOwner {
+    pub owner: Addr,
+    pub address: Addr,
+    pub amount: Uint128,
+}
+
+pub struct Cw20BalanceIndexes<'a> {
+    pub owner: MultiIndex<'a, Addr, Cw20ByOwner, String>,
+    pub owner_addr: UniqueIndex<'a, (Addr, Addr), Cw20ByOwner, Cw20CoinVerified>,
+}
+
+impl<'a> IndexList<Cw20ByOwner> for Cw20BalanceIndexes<'a> {
+    fn get_indexes(&'_ self) -> Box<dyn Iterator<Item = &'_ dyn Index<Cw20ByOwner>> + '_> {
+        let v: Vec<&dyn Index<Cw20ByOwner>> = vec![&self.owner_addr];
+        Box::new(v.into_iter())
+    }
+}
+
 /// ----------------------------------------------------------------
 /// Tasks Storage
 /// ----------------------------------------------------------------
@@ -134,8 +172,8 @@ pub struct CwCroncat<'a> {
 
     // Tasks + rewards balances
     /// Availible native balance of the contract
-    /// Key - Denom
-    /// Value - Amount
+    /// Key: Denom
+    /// Value: Amount
     pub availible_native_balance: Map<'a, &'a str, Uint128>,
     /// Availible cw20 balance of the contract
     /// Key: Cw20 Addr
@@ -144,14 +182,21 @@ pub struct CwCroncat<'a> {
 
     // surplus that is temporary staking (to be used in conjunction with external treasury)
     /// Staked native amounts by the contract
-    /// Key - Denom
-    /// Value - Amount
+    /// Key: Denom
+    /// Value: Amount
     pub staked_native_balance: Map<'a, &'a str, Uint128>,
 
     /// Staked cw20 amounts by the contract
     /// Key: Cw20 Addr
     /// Value: Amount
     pub staked_cw20_balance: Map<'a, &'a Addr, Uint128>,
+
+    // Accrued Agent reward balance
+    pub agent_balances_native:
+        IndexedMap<'a, (&'a Addr, &'a str), CoinByOwner, NativeBalanceIndexes<'a>>,
+
+    pub agent_balances_cw20:
+        IndexedMap<'a, (&'a Addr, &'a Addr), Cw20ByOwner, Cw20BalanceIndexes<'a>>,
 
     pub balancer: RoundRobinBalancer,
     pub users_balances: Map<'a, &'a Addr, Vec<Cw20CoinVerified>>,
@@ -185,6 +230,28 @@ impl<'a> CwCroncat<'a> {
                 tasks_with_queries_owner_key,
             ),
         };
+        let agent_native_indexes = NativeBalanceIndexes {
+            owner: MultiIndex::new(
+                |_pk, idx| idx.owner.clone(),
+                "agents_native",
+                "agents_native__owner",
+            ),
+            owner_denom: UniqueIndex::new(
+                |idx| (idx.owner.clone(), idx.denom.clone()),
+                "agents_native__owner_denom",
+            ),
+        };
+        let agent_cw20_indexes = Cw20BalanceIndexes {
+            owner: MultiIndex::new(
+                |_pk, idx| idx.owner.clone(),
+                "agents_cw20",
+                "agents_cw20__owner",
+            ),
+            owner_addr: UniqueIndex::new(
+                |idx| (idx.owner.clone(), idx.address.clone()),
+                "agents_cw20__owner_addr",
+            ),
+        };
         Self {
             config: Item::new("config"),
             agents: Map::new("agents"),
@@ -205,6 +272,8 @@ impl<'a> CwCroncat<'a> {
             available_cw20_balance: Map::new("availible_cw20_balance"),
             staked_native_balance: Map::new("staked_native_balance"),
             staked_cw20_balance: Map::new("staked_cw20_balance"),
+            agent_balances_native: IndexedMap::new("agents_native", agent_native_indexes),
+            agent_balances_cw20: IndexedMap::new("agents_cw20", agent_cw20_indexes),
             balancer: RoundRobinBalancer::default(),
             users_balances: Map::new("balances"),
         }

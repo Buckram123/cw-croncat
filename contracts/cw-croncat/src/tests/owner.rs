@@ -336,7 +336,7 @@ fn test_get_state() {
     // Create a task
     let msg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: contract_addr.to_string(),
-        msg: to_binary(&ExecuteMsg::WithdrawReward {}).unwrap(),
+        msg: to_binary(&ExecuteMsg::WithdrawReward { limit: None }).unwrap(),
         funds: coins(1, NATIVE_DENOM),
     });
 
@@ -391,7 +391,7 @@ fn test_get_state() {
     let state = state.unwrap();
 
     let task_id_str =
-        "1032a37c92801f73c75816bddb4f0db8516baeeeacd6a2c225f0a6a54c96732e".to_string();
+        "2b8317bc373888d9cecd230bbb74a9095d487982f0155698377dac1c9733bf3a".to_string();
 
     assert_eq!(state.agent_active_queue.len(), 1);
     assert_eq!(state.agent_active_queue[0].as_str(), AGENT0);

@@ -1,10 +1,9 @@
 use crate::balancer::Balancer;
 use crate::error::ContractError;
-use crate::helpers::{send_tokens, GenericBalance};
 use crate::state::{Config, CwCroncat};
 use cosmwasm_std::{
-    has_coins, Addr, Coin, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult, Storage,
-    SubMsg,
+    has_coins, Addr, Coin, Deps, DepsMut, Env, MessageInfo, Order, Response, StdError, StdResult,
+    Storage, SubMsg,
 };
 use cw_storage_plus::Bound;
 use std::ops::Div;
@@ -40,7 +39,6 @@ impl<'a> CwCroncat<'a> {
         let agent_response = AgentResponse {
             status: agent_status,
             payable_account_id: a.payable_account_id,
-            balance: a.balance,
             total_tasks_executed: a.total_tasks_executed,
             last_executed_slot: a.last_executed_slot,
             register_start: a.register_start,
@@ -182,7 +180,6 @@ impl<'a> CwCroncat<'a> {
                     None => {
                         Ok(Agent {
                             payable_account_id: payable_id,
-                            balance: GenericBalance::default(),
                             total_tasks_executed: 0,
                             last_executed_slot: env.block.height,
                             // REF: https://github.com/CosmWasm/cosmwasm/blob/main/packages/std/src/types.rs#L57
@@ -241,19 +238,43 @@ impl<'a> CwCroncat<'a> {
         &self,
         storage: &mut dyn Storage,
         agent_id: &Addr,
+        limit: Option<u64>,
     ) -> Result<Vec<SubMsg>, ContractError> {
-        let mut agent = self
+        let agent = self
             .agents
             .may_load(storage, agent_id)?
             .ok_or(AgentNotRegistered {})?;
 
+        let limit = limit.unwrap_or(5);
         // This will send all token balances to Agent
-        let (messages, balances) = send_tokens(&agent.payable_account_id, &agent.balance)?;
-        agent.balance.checked_sub_generic(&balances)?;
-        for coin in balances.native {
-            self.subtract_availible_native(storage, &coin)?;
+        let native_keys = self
+            .agent_balances_native
+            .prefix(agent_id)
+            .keys(storage, None, None, Order::Ascending)
+            .take(limit as usize)
+            .collect::<StdResult<Vec<_>>>()?;
+
+        let cw20_keys = self
+            .agent_balances_cw20
+            .prefix(agent_id)
+            .keys(storage, None, None, Order::Ascending)
+            .take(limit as usize)
+            .collect::<StdResult<Vec<_>>>()?;
+
+        let (messages, native, cw20) = self.agent_withdraw_messages(
+            storage,
+            agent_id,
+            &agent.payable_account_id,
+            native_keys,
+            cw20_keys,
+        )?;
+        for coin in native {
+            self.sub_availible_native(storage, &coin)?;
         }
-        self.agents.save(storage, agent_id, &agent)?;
+
+        for coin in cw20 {
+            self.sub_availible_cw20(storage, &coin)?;
+        }
 
         Ok(messages)
     }
@@ -263,8 +284,9 @@ impl<'a> CwCroncat<'a> {
         &self,
         deps: DepsMut,
         agent_id: &Addr,
+        limit: Option<u64>,
     ) -> Result<Response, ContractError> {
-        let messages = self.withdraw_balances(deps.storage, agent_id)?;
+        let messages = self.withdraw_balances(deps.storage, agent_id, limit)?;
 
         Ok(Response::new()
             .add_attribute("method", "withdraw_agent_balance")
@@ -374,7 +396,7 @@ impl<'a> CwCroncat<'a> {
     ) -> Result<Response, ContractError> {
         // Get withdraw messages, if any
         // NOTE: Since this also checks if agent exists, safe to not have redundant logic
-        let messages = self.withdraw_balances(storage, agent_id)?;
+        let messages = self.withdraw_balances(storage, agent_id, None)?; // TODO: add message if withdraw failed
         self.agents.remove(storage, agent_id);
 
         // Remove from the list of active agents if the agent in this list

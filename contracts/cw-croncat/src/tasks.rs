@@ -492,7 +492,7 @@ impl<'a> CwCroncat<'a> {
         )?;
         // remove from the total available_balance
         for coin in task.total_deposit.native.iter() {
-            self.subtract_availible_native(storage, coin)?;
+            self.sub_availible_native(storage, coin)?;
         }
         // setup sub-msgs for returning any remaining total_deposit to the owner
         if !task.total_deposit.native.is_empty() {
@@ -655,7 +655,7 @@ impl<'a> CwCroncat<'a> {
             },
         )?;
         for coin in withdraws.iter() {
-            self.subtract_availible_cw20(deps.storage, coin)?;
+            self.sub_availible_cw20(deps.storage, coin)?;
         }
 
         let msgs = {

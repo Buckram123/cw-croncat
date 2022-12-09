@@ -278,7 +278,7 @@ impl<'a> CwCroncat<'a> {
 
                         // Update internal registry balance
                         for coin in bal.iter() {
-                            self.subtract_availible_native(deps.storage, coin)?;
+                            self.sub_availible_native(deps.storage, coin)?;
                         }
                         Ok(SubMsg::new(BankMsg::Send {
                             to_address: account_id.clone().into(),
@@ -301,7 +301,7 @@ impl<'a> CwCroncat<'a> {
                         }
 
                         // Update internal registry balance
-                        self.subtract_availible_cw20(deps.storage, token)?;
+                        self.sub_availible_cw20(deps.storage, token)?;
 
                         let msg = Cw20ExecuteMsg::Transfer {
                             recipient: account_id.clone().into(),

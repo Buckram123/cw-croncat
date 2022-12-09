@@ -8,23 +8,15 @@ use crate::{
         TaskRequest, TaskResponse,
     },
     types::{
-        Action, Agent, AgentStatus, Boundary, BoundaryValidated, GasFraction, GenericBalance,
-        Interval, SlotType, Task,
+        Action, Agent, AgentStatus, Boundary, BoundaryValidated, GasFraction, Interval, SlotType,
+        Task,
     },
 };
 
 #[test]
 fn everything_can_be_de_serialized() {
-    let generic_balance = GenericBalance {
-        native: vec![coin(5, "test")],
-        cw20: vec![Cw20CoinVerified {
-            address: Addr::unchecked("juno1"),
-            amount: 125u128.into(),
-        }],
-    };
     let agent = Agent {
         payable_account_id: Addr::unchecked("test"),
-        balance: generic_balance.clone(),
         total_tasks_executed: 0,
         last_executed_slot: 3,
         register_start: Timestamp::from_nanos(5),
@@ -140,7 +132,6 @@ fn everything_can_be_de_serialized() {
     let get_agent_response = Some(AgentResponse {
         status: AgentStatus::Active,
         payable_account_id: Addr::unchecked("bob"),
-        balance: generic_balance.clone(),
         total_tasks_executed: 2,
         last_executed_slot: 2,
         register_start: Timestamp::from_nanos(5),

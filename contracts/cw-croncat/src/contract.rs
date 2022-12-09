@@ -151,7 +151,9 @@ impl<'a> CwCroncat<'a> {
             ExecuteMsg::UnregisterAgent { from_behind } => {
                 self.unregister_agent(deps.storage, &info.sender, from_behind)
             }
-            ExecuteMsg::WithdrawReward {} => self.withdraw_agent_balance(deps, &info.sender),
+            ExecuteMsg::WithdrawReward { limit } => {
+                self.withdraw_agent_balance(deps, &info.sender, limit)
+            }
             ExecuteMsg::CheckInAgent {} => self.accept_nomination_agent(deps, info, env),
 
             ExecuteMsg::CreateTask { task } => self.create_task(deps, info, env, task),

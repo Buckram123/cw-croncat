@@ -249,12 +249,12 @@ fn proxy_call_success() -> StdResult<()> {
     let contract_addr = cw_template_contract.addr();
     let proxy_call_msg = ExecuteMsg::ProxyCall { task_hash: None };
     let task_id_str =
-        "1032a37c92801f73c75816bddb4f0db8516baeeeacd6a2c225f0a6a54c96732e".to_string();
+        "2b8317bc373888d9cecd230bbb74a9095d487982f0155698377dac1c9733bf3a".to_string();
 
     // Doing this msg since its the easiest to guarantee success in reply
     let msg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: contract_addr.to_string(),
-        msg: to_binary(&ExecuteMsg::WithdrawReward {})?,
+        msg: to_binary(&ExecuteMsg::WithdrawReward { limit: None })?,
         funds: coins(1, NATIVE_DENOM),
     });
 
@@ -343,6 +343,11 @@ fn proxy_call_success() -> StdResult<()> {
         )
         .unwrap();
     // Check that last_executed_slot for this agent increased after proxy_call
+    println!(
+        "l:{} / r:{}",
+        agent_after_proxy_call.clone().unwrap().last_executed_slot,
+        agent_before_proxy_call.clone().unwrap().last_executed_slot + 1
+    );
     assert!(
         agent_after_proxy_call.unwrap().last_executed_slot
             == agent_before_proxy_call.unwrap().last_executed_slot + 1
@@ -482,7 +487,7 @@ fn proxy_call_no_task_and_withdraw() -> StdResult<()> {
     let res = app.execute_contract(
         Addr::unchecked(AGENT0),
         contract_addr.clone(),
-        &ExecuteMsg::WithdrawReward {},
+        &ExecuteMsg::WithdrawReward { limit: None },
         &[],
     );
     assert!(res.is_ok());
@@ -735,12 +740,12 @@ fn proxy_callback_block_slots() -> StdResult<()> {
     let contract_addr = cw_template_contract.addr();
     let proxy_call_msg = ExecuteMsg::ProxyCall { task_hash: None };
     let task_id_str =
-        "1032a37c92801f73c75816bddb4f0db8516baeeeacd6a2c225f0a6a54c96732e".to_string();
+        "2b8317bc373888d9cecd230bbb74a9095d487982f0155698377dac1c9733bf3a".to_string();
 
     // Doing this msg since its the easiest to guarantee success in reply
     let msg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: contract_addr.to_string(),
-        msg: to_binary(&ExecuteMsg::WithdrawReward {})?,
+        msg: to_binary(&ExecuteMsg::WithdrawReward { limit: None })?,
         funds: coins(1, NATIVE_DENOM),
     });
 
@@ -864,12 +869,12 @@ fn proxy_callback_time_slots() -> StdResult<()> {
     let contract_addr = cw_template_contract.addr();
     let proxy_call_msg = ExecuteMsg::ProxyCall { task_hash: None };
     let task_id_str =
-        "164329dc48b4d81075f82c823108d1f1f435af952d4697583b99a9f35962e211".to_string();
+        "cf80d48d289e9ee056e6fee19e669dc744704bc22f52b447bc2a47396c4341a1".to_string();
 
     // Doing this msg since its the easiest to guarantee success in reply
     let msg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: contract_addr.to_string(),
-        msg: to_binary(&ExecuteMsg::WithdrawReward {})?,
+        msg: to_binary(&ExecuteMsg::WithdrawReward { limit: None })?,
         funds: coins(1, NATIVE_DENOM),
     });
 
@@ -996,19 +1001,19 @@ fn proxy_call_several_tasks() -> StdResult<()> {
     // Doing this msg since its the easiest to guarantee success in reply
     let msg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: contract_addr.to_string(),
-        msg: to_binary(&ExecuteMsg::WithdrawReward {})?,
+        msg: to_binary(&ExecuteMsg::WithdrawReward { limit: None })?,
         funds: coins(1, NATIVE_DENOM),
     });
 
     let msg2 = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: contract_addr.to_string(),
-        msg: to_binary(&ExecuteMsg::WithdrawReward {})?,
+        msg: to_binary(&ExecuteMsg::WithdrawReward { limit: None })?,
         funds: coins(2, NATIVE_DENOM),
     });
 
     let msg3 = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: contract_addr.to_string(),
-        msg: to_binary(&ExecuteMsg::WithdrawReward {})?,
+        msg: to_binary(&ExecuteMsg::WithdrawReward { limit: None })?,
         funds: coins(3, NATIVE_DENOM),
     });
 
@@ -1444,7 +1449,7 @@ fn test_balance_changes() {
         .wrap()
         .query_balance(&contract_addr, NATIVE_DENOM)
         .unwrap();
-    let withdraw_msg = ExecuteMsg::WithdrawReward {};
+    let withdraw_msg = ExecuteMsg::WithdrawReward { limit: None };
     app.execute_contract(
         Addr::unchecked(AGENT0),
         contract_addr.clone(),

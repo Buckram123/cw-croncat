@@ -165,6 +165,8 @@ pub enum QueryMsg {
     GetSlotIds {},
     GetWalletBalances {
         wallet: String,
+        from_index: Option<u64>,
+        limit: Option<u64>,
     },
     GetState {
         from_index: Option<u64>,
@@ -287,8 +289,8 @@ pub struct TaskResponse {
     pub boundary: Option<Boundary>,
 
     pub stop_on_fail: bool,
-    pub total_deposit: Vec<Coin>,
-    pub total_cw20_deposit: Vec<Cw20CoinVerified>,
+    pub total_deposit_native: Vec<Coin>,
+    pub total_deposit_cw20: Vec<Cw20CoinVerified>,
     pub amount_for_one_task_native: Vec<Coin>,
     pub amount_for_one_task_cw20: Vec<Cw20CoinVerified>,
 
@@ -328,19 +330,12 @@ pub struct CwCroncatResponse {
     pub agent_nomination_begin_time: Option<Timestamp>,
 
     pub balancer_mode: RoundRobinBalancerModeResponse,
-    pub balances: Vec<BalancesResponse>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct SlotResponse {
     pub slot: Uint64,
     pub tasks: Vec<Vec<u8>>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct BalancesResponse {
-    pub address: Addr,
-    pub balances: Vec<Cw20CoinVerified>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
@@ -396,10 +391,10 @@ impl From<Task> for TaskResponse {
             interval: task.interval,
             boundary,
             stop_on_fail: task.stop_on_fail,
-            total_deposit: task.total_deposit.native,
-            total_cw20_deposit: task.total_deposit.cw20,
-            amount_for_one_task_native: task.amount_for_one_task.native,
-            amount_for_one_task_cw20: task.amount_for_one_task.cw20,
+            total_deposit_native: task.total_deposit.native_coins(),
+            total_deposit_cw20: task.total_deposit.cw20_coins(),
+            amount_for_one_task_native: task.amount_for_one_task.native_coins(),
+            amount_for_one_task_cw20: task.amount_for_one_task.cw20_coins(),
             actions: task.actions,
             queries: task.queries,
         }

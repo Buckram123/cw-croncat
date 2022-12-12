@@ -11,7 +11,7 @@ use cw_croncat_core::msg::{
     ExecuteMsg, GetBalancesResponse, GetSlotHashesResponse, GetSlotIdsResponse, QueryMsg,
     TaskRequest, TaskResponse, TaskWithQueriesResponse,
 };
-use cw_croncat_core::types::{Action, Boundary, BoundaryValidated, GenericBalance, Interval, Task};
+use cw_croncat_core::types::{Action, Boundary, BoundaryValidated, Interval, Task, TaskBalance};
 use cw_multi_test::Executor;
 use cw_rules_core::types::{CroncatQuery, HasBalanceGte};
 use std::convert::TryInto;
@@ -38,10 +38,7 @@ fn query_task_hash_success() {
             end: None,
         },
         stop_on_fail: false,
-        total_deposit: GenericBalance {
-            native: coins(37, NATIVE_DENOM),
-            cw20: Default::default(),
-        },
+        total_deposit: TaskBalance::from_coins(&coins(37, NATIVE_DENOM)).unwrap(),
         amount_for_one_task: Default::default(),
         actions: vec![Action {
             msg,
@@ -617,7 +614,7 @@ fn check_task_create_success() -> StdResult<()> {
         assert_eq!(Interval::Immediate, t.interval);
         assert_eq!(None, t.boundary);
         assert_eq!(false, t.stop_on_fail);
-        assert_eq!(coins(315006, NATIVE_DENOM), t.total_deposit);
+        assert_eq!(coins(315006, NATIVE_DENOM), t.total_deposit_native);
         assert_eq!(task_id_str.clone(), t.task_hash);
     }
 
@@ -1014,7 +1011,7 @@ fn check_refill_create() -> StdResult<()> {
 
     if let Some(t) = new_task {
         assert_eq!(Addr::unchecked(ANYONE), t.owner_id);
-        assert_eq!(coins(315009, NATIVE_DENOM), t.total_deposit);
+        assert_eq!(coins(315009, NATIVE_DENOM), t.total_deposit_native);
     }
 
     // Check the balance has increased to include the new refilled total

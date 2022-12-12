@@ -120,6 +120,8 @@ fn test_cw20_balances() {
             contract_addr.clone(),
             &QueryMsg::GetWalletBalances {
                 wallet: user.to_string(),
+                from_index: None,
+                limit: None,
             },
         )
         .unwrap();
@@ -145,6 +147,8 @@ fn test_cw20_balances() {
             contract_addr.clone(),
             &QueryMsg::GetWalletBalances {
                 wallet: user.to_string(),
+                from_index: None,
+                limit: None,
             },
         )
         .unwrap();
@@ -214,7 +218,7 @@ fn test_cw20_balances() {
         )
         .unwrap();
     assert_eq!(
-        task.total_cw20_deposit,
+        task.total_deposit_cw20,
         vec![Cw20CoinVerified {
             address: cw20_contract.clone(),
             amount: 10u128.into()
@@ -227,6 +231,8 @@ fn test_cw20_balances() {
             contract_addr.clone(),
             &QueryMsg::GetWalletBalances {
                 wallet: user.to_string(),
+                from_index: None,
+                limit: None,
             },
         )
         .unwrap();

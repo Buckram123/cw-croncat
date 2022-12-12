@@ -5,7 +5,7 @@ use crate::state::{Config, CwCroncat, QueueItem, TaskInfo};
 use cosmwasm_std::{
     from_binary, Addr, Deps, DepsMut, Env, MessageInfo, Order, Reply, Response, StdResult, Storage,
 };
-use cw_croncat_core::traits::{FindAndMutate, Intervals};
+use cw_croncat_core::traits::Intervals;
 use cw_croncat_core::types::{Agent, Interval, SlotType, Task};
 use cw_rules_core::msg::{QueryConstruct, QueryConstructResponse};
 
@@ -162,7 +162,7 @@ impl<'a> CwCroncat<'a> {
         let next_idx = self.rq_next_id(deps.storage)?;
         let mut task = self.tasks.load(deps.storage, &hash)?;
         let (sub_msgs, fee_price) = proxy_call_submsgs_price(&task, cfg, next_idx)?;
-        task.total_deposit.native.find_checked_sub(&fee_price)?;
+        task.total_deposit.sub_native_coin(&fee_price)?;
         // Add balance to the agent
         self.add_agent_native(deps.storage, &info.sender, &fee_price)?;
         self.tasks.save(deps.storage, &hash, &task)?;
@@ -270,7 +270,7 @@ impl<'a> CwCroncat<'a> {
         self.tasks_with_queries
             .update(deps.storage, hash, |task| -> Result<_, ContractError> {
                 let mut task = task.ok_or(ContractError::NoTaskFound {})?;
-                task.total_deposit.native.find_checked_sub(&fee_price)?;
+                task.total_deposit.sub_native_coin(&fee_price)?;
                 Ok(task)
             })?;
         // Keep track for later scheduling

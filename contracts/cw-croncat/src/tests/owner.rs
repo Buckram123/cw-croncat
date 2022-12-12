@@ -331,7 +331,6 @@ fn test_get_state() {
         state.balancer_mode,
         RoundRobinBalancerModeResponse::ActivationOrder
     );
-    assert!(state.balances.is_empty());
 
     // Create a task
     let msg = CosmosMsg::Wasm(WasmMsg::Execute {
@@ -409,5 +408,4 @@ fn test_get_state() {
     assert!(state.block_slots_queries.is_empty());
     assert_eq!(state.reply_index, Uint64::zero());
     assert!(state.agent_nomination_begin_time.is_some());
-    assert!(state.balances.is_empty());
 }

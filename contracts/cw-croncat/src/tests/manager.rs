@@ -1553,7 +1553,7 @@ fn test_no_reschedule_if_lack_balance() {
         )
         .unwrap();
     assert_eq!(
-        task.unwrap().total_deposit[0].amount,
+        task.unwrap().total_deposit_native[0].amount,
         Uint128::from((gas_for_one + agent_fee) / GAS_DENOMINATOR_DEFAULT_JUNO + extra)
     );
 
@@ -2187,7 +2187,7 @@ fn testing_fee_works() {
         .unwrap();
     let tasks: Vec<(Vec<Coin>, Vec<Action>)> = tasks
         .into_iter()
-        .map(|task| (task.total_deposit, task.actions))
+        .map(|task| (task.total_deposit_native, task.actions))
         .collect();
     println!("tasks: {tasks:?}");
 
@@ -2213,7 +2213,7 @@ fn testing_fee_works() {
         .unwrap();
     let tasks: Vec<(Vec<Coin>, Vec<Action>)> = tasks
         .into_iter()
-        .map(|task| (task.total_deposit, task.actions))
+        .map(|task| (task.total_deposit_native, task.actions))
         .collect();
     println!("tasks: {tasks:?}");
 
@@ -2239,7 +2239,7 @@ fn testing_fee_works() {
         .unwrap();
     let tasks: Vec<(Vec<Coin>, Vec<Action>)> = tasks
         .into_iter()
-        .map(|task| (task.total_deposit, task.actions))
+        .map(|task| (task.total_deposit_native, task.actions))
         .collect();
     println!("tasks: {tasks:?}");
 

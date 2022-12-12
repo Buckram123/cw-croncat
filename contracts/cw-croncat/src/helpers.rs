@@ -1,4 +1,4 @@
-use crate::state::{CoinByOwner, Config, QueueItem};
+use crate::state::{CoinByOwner, Config, Cw20ByOwner, QueueItem};
 // use cosmwasm_std::Binary;
 // use cosmwasm_std::StdError;
 // use thiserror::Error;
@@ -11,7 +11,6 @@ use cosmwasm_std::{
 };
 use cw20::{Cw20CoinVerified, Cw20ExecuteMsg};
 use cw_croncat_core::msg::ExecuteMsg;
-use cw_croncat_core::traits::{BalancesOperations, FindAndMutate};
 use cw_croncat_core::types::{calculate_required_amount, AgentStatus};
 pub use cw_croncat_core::types::{GenericBalance, Task};
 //use regex::Regex;
@@ -158,13 +157,13 @@ impl<'a> CwCroncat<'a> {
 
             // update task balances and contract balances
             if let Some(sent) = action.bank_sent() {
-                task.total_deposit.native.checked_sub_coins(sent)?;
                 for coin in sent {
                     self.sub_availible_native(storage, coin)?;
+                    task.total_deposit.sub_native_coin(coin)?;
                 }
             } else if let Some(sent) = action.cw20_sent(api) {
-                task.total_deposit.cw20.find_checked_sub(&sent)?;
                 self.sub_availible_cw20(storage, &sent)?;
+                task.total_deposit.sub_cw20_coin(&sent)?;
             };
             if task.with_queries() {
                 self.tasks_with_queries.save(storage, &task_hash, &task)?;
@@ -251,6 +250,50 @@ impl<'a> CwCroncat<'a> {
                     amount: Default::default(),
                 });
                 bal.amount = bal.amount.checked_add(coin.amount)?;
+                Ok(bal)
+            },
+        )?;
+        Ok(new_bal)
+    }
+
+    pub(crate) fn add_user_cw20(
+        &self,
+        storage: &mut dyn Storage,
+        user_addr: &Addr,
+        cw20: &Cw20CoinVerified,
+    ) -> StdResult<Cw20ByOwner> {
+        let new_bal = self.users_balances_cw20.update(
+            storage,
+            (user_addr, &cw20.address),
+            |bal| -> StdResult<Cw20ByOwner> {
+                let mut bal = bal.unwrap_or(Cw20ByOwner {
+                    owner: user_addr.clone(),
+                    address: cw20.address.clone(),
+                    amount: Default::default(),
+                });
+                bal.amount = bal.amount.checked_add(cw20.amount)?;
+                Ok(bal)
+            },
+        )?;
+        Ok(new_bal)
+    }
+
+    pub(crate) fn sub_user_cw20(
+        &self,
+        storage: &mut dyn Storage,
+        user_addr: &Addr,
+        cw20: &Cw20CoinVerified,
+    ) -> StdResult<Cw20ByOwner> {
+        let new_bal = self.users_balances_cw20.update(
+            storage,
+            (user_addr, &cw20.address),
+            |bal| -> StdResult<Cw20ByOwner> {
+                let mut bal = bal.unwrap_or(Cw20ByOwner {
+                    owner: user_addr.clone(),
+                    address: cw20.address.clone(),
+                    amount: Default::default(),
+                });
+                bal.amount = bal.amount.checked_sub(cw20.amount)?;
                 Ok(bal)
             },
         )?;

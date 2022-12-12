@@ -208,9 +208,11 @@ impl<'a> CwCroncat<'a> {
             }
             QueryMsg::GetSlotHashes { slot } => to_binary(&self.query_slot_tasks(deps, slot)?),
             QueryMsg::GetSlotIds {} => to_binary(&self.query_slot_ids(deps)?),
-            QueryMsg::GetWalletBalances { wallet } => {
-                to_binary(&self.query_wallet_balances(deps, wallet)?)
-            }
+            QueryMsg::GetWalletBalances {
+                wallet,
+                from_index,
+                limit,
+            } => to_binary(&self.query_wallet_balances(deps, wallet, from_index, limit)?),
             QueryMsg::GetState { from_index, limit } => {
                 to_binary(&self.get_state(deps, env, from_index, limit)?)
             }

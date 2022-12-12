@@ -1,7 +1,6 @@
 use cosmwasm_std::{
-    Addr, Api, BankMsg, Binary, Coin, CosmosMsg, Empty, Env, GovMsg, IbcMsg, OverflowError,
-    OverflowOperation::Sub, StakingMsg, StdError, SubMsg, SubMsgResult, Timestamp, Uint128, Uint64,
-    WasmMsg,
+    Addr, Api, BankMsg, Binary, Coin, CosmosMsg, Empty, Env, GovMsg, IbcMsg, StakingMsg, StdError,
+    StdResult, SubMsg, SubMsgResult, Timestamp, Uint128, Uint64, WasmMsg,
 };
 use cron_schedule::Schedule;
 use cw20::{Cw20CoinVerified, Cw20ExecuteMsg};
@@ -11,12 +10,12 @@ use hex::encode;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use std::str::FromStr;
+use std::{collections::HashMap, str::FromStr};
 
 use crate::{
     error::CoreError,
     msg::TaskRequest,
-    traits::{BalancesOperations, FindAndMutate, Intervals, ResultFailed},
+    traits::{Intervals, ResultFailed},
 };
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]
@@ -210,9 +209,9 @@ impl TaskRequest {
         owner_id: &Addr,
         base_gas: u64,
         action_gas: u64,
-    ) -> Result<(GenericBalance, u64), CoreError> {
+    ) -> Result<(TaskBalance, u64), CoreError> {
         let mut gas_amount: u64 = base_gas;
-        let mut amount_for_one_task = GenericBalance::default();
+        let mut amount_for_one_task = TaskBalance::default();
 
         for action in self.actions.iter() {
             // checked for cases, where task creator intentionaly tries to overflow
@@ -236,20 +235,16 @@ impl TaskRequest {
                     if let Ok(cw20_msg) = cosmwasm_std::from_binary(msg) {
                         match cw20_msg {
                             Cw20ExecuteMsg::Send { amount, .. } if !amount.is_zero() => {
-                                amount_for_one_task
-                                    .cw20
-                                    .find_checked_add(&Cw20CoinVerified {
-                                        address: api.addr_validate(contract_addr)?,
-                                        amount,
-                                    })?
+                                amount_for_one_task.add_cw20_coin(&Cw20CoinVerified {
+                                    address: api.addr_validate(contract_addr)?,
+                                    amount,
+                                })?
                             }
                             Cw20ExecuteMsg::Transfer { amount, .. } if !amount.is_zero() => {
-                                amount_for_one_task
-                                    .cw20
-                                    .find_checked_add(&Cw20CoinVerified {
-                                        address: api.addr_validate(contract_addr)?,
-                                        amount,
-                                    })?
+                                amount_for_one_task.add_cw20_coin(&Cw20CoinVerified {
+                                    address: api.addr_validate(contract_addr)?,
+                                    amount,
+                                })?
                             }
                             _ => {
                                 return Err(CoreError::InvalidAction {});
@@ -265,7 +260,7 @@ impl TaskRequest {
                     if amount.amount.is_zero() {
                         return Err(CoreError::InvalidAction {});
                     }
-                    amount_for_one_task.native.find_checked_add(amount)?;
+                    amount_for_one_task.add_native_coin(amount)?;
                 }
                 // TODO: Allow send, as long as coverage of assets is correctly handled
                 CosmosMsg::Bank(BankMsg::Send {
@@ -280,7 +275,9 @@ impl TaskRequest {
                     if amount.iter().any(|coin| coin.amount.is_zero()) {
                         return Err(CoreError::InvalidAction {});
                     }
-                    amount_for_one_task.checked_add_native(amount)?;
+                    for coin in amount {
+                        amount_for_one_task.add_native_coin(coin)?;
+                    }
                 }
                 CosmosMsg::Bank(_) => {
                     // Restrict bank msg for time being, so contract doesnt get drained, however could allow an escrow type setup
@@ -303,6 +300,121 @@ impl TaskRequest {
     }
 }
 
+#[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+pub struct TaskBalance {
+    /// Denom: Amount
+    native: HashMap<String, Uint128>,
+    /// Cw20Addr: Amount
+    cw20: HashMap<Addr, Uint128>,
+}
+
+impl TaskBalance {
+    pub fn from_coins(coins: &[Coin]) -> StdResult<Self> {
+        let mut task_balance = TaskBalance {
+            native: HashMap::with_capacity(coins.len()),
+            cw20: Default::default(),
+        };
+        for coin in coins {
+            task_balance.add_native_coin(coin)?;
+        }
+        Ok(task_balance)
+    }
+
+    pub fn add_native_coin(&mut self, coin: &Coin) -> StdResult<()> {
+        let current_amount = self
+            .native
+            .get(&coin.denom)
+            .map(Uint128::to_owned)
+            .unwrap_or_default();
+        self.native.insert(
+            coin.denom.to_owned(),
+            current_amount
+                .checked_add(coin.amount)
+                .map_err(StdError::overflow)?,
+        );
+        Ok(())
+    }
+
+    pub fn sub_native_coin(&mut self, coin: &Coin) -> StdResult<()> {
+        let current_amount = self
+            .native
+            .get(&coin.denom)
+            .map(Uint128::to_owned)
+            .unwrap_or_default();
+        let new_amount = current_amount.checked_sub(coin.amount)?;
+
+        // Clean up if zero
+        if new_amount.is_zero() {
+            self.native.remove(&coin.denom);
+        } else {
+            self.native.insert(
+                coin.denom.to_owned(),
+                current_amount
+                    .checked_sub(coin.amount)
+                    .map_err(StdError::overflow)?,
+            );
+        }
+        Ok(())
+    }
+
+    pub fn sub_cw20_coin(&mut self, cw20: &Cw20CoinVerified) -> StdResult<()> {
+        let current_amount = self
+            .cw20
+            .get(&cw20.address)
+            .map(Uint128::to_owned)
+            .unwrap_or_default();
+        let new_amount = current_amount.checked_sub(cw20.amount)?;
+
+        // Clean up if zero
+        if new_amount.is_zero() {
+            self.cw20.remove(&cw20.address);
+        } else {
+            self.cw20.insert(
+                cw20.address.to_owned(),
+                current_amount
+                    .checked_sub(cw20.amount)
+                    .map_err(StdError::overflow)?,
+            );
+        }
+        Ok(())
+    }
+
+    pub fn add_cw20_coin(&mut self, cw20: &Cw20CoinVerified) -> StdResult<()> {
+        let current_amount = self
+            .cw20
+            .get(&cw20.address)
+            .map(Uint128::to_owned)
+            .unwrap_or_default();
+        self.cw20.insert(
+            cw20.address.to_owned(),
+            current_amount
+                .checked_add(cw20.amount)
+                .map_err(StdError::overflow)?,
+        );
+        Ok(())
+    }
+
+    pub fn native_coins(&self) -> Vec<Coin> {
+        self.native
+            .iter()
+            .map(|(denom, &amount)| Coin {
+                denom: denom.to_owned(),
+                amount,
+            })
+            .collect()
+    }
+
+    pub fn cw20_coins(&self) -> Vec<Cw20CoinVerified> {
+        self.cw20
+            .iter()
+            .map(|(address, &amount)| Cw20CoinVerified {
+                address: address.to_owned(),
+                amount,
+            })
+            .collect()
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Task {
     /// Entity responsible for this task, can change task details
@@ -316,9 +428,9 @@ pub struct Task {
     pub stop_on_fail: bool,
 
     /// NOTE: Only tally native balance here, manager can maintain token/balances outside of tasks
-    pub total_deposit: GenericBalance,
+    pub total_deposit: TaskBalance,
 
-    pub amount_for_one_task: GenericBalance,
+    pub amount_for_one_task: TaskBalance,
 
     /// The cosmos message to call, if time or rules are met
     pub actions: Vec<Action>,
@@ -356,23 +468,17 @@ impl Task {
     }
 
     pub fn verify_enough_cw20(&self, multiplier: Uint128) -> Result<(), CoreError> {
-        for coin in self.amount_for_one_task.cw20.iter() {
-            if let Some(balance) = self
+        for (addr, amount_req) in self.amount_for_one_task.cw20.iter() {
+            let amount = self
                 .total_deposit
                 .cw20
-                .iter()
-                .find(|balance| balance.address == coin.address)
-            {
-                if balance.amount < coin.amount * multiplier {
-                    return Err(CoreError::NotEnoughCw20 {
-                        addr: coin.address.to_string(),
-                        lack: coin.amount * multiplier - balance.amount,
-                    });
-                }
-            } else {
+                .get(addr)
+                .map(Uint128::to_owned)
+                .unwrap_or_default();
+            if amount < (amount_req * multiplier) {
                 return Err(CoreError::NotEnoughCw20 {
-                    addr: coin.address.to_string(),
-                    lack: coin.amount,
+                    addr: addr.to_string(),
+                    lack: amount_req * multiplier - amount,
                 });
             }
         }
@@ -380,23 +486,17 @@ impl Task {
     }
 
     pub fn verify_enough_native(&self, multiplier: Uint128) -> Result<(), CoreError> {
-        for coin in self.amount_for_one_task.native.iter() {
-            if let Some(balance) = self
+        for (denom, amount_req) in self.amount_for_one_task.native.iter() {
+            let amount = self
                 .total_deposit
                 .native
-                .iter()
-                .find(|balance| balance.denom == coin.denom)
-            {
-                if balance.amount < coin.amount * multiplier {
-                    return Err(CoreError::NotEnoughNative {
-                        denom: coin.denom.clone(),
-                        lack: coin.amount * multiplier - balance.amount,
-                    });
-                }
-            } else {
+                .get(denom)
+                .map(Uint128::to_owned)
+                .unwrap_or_default();
+            if amount < (amount_req * multiplier) {
                 return Err(CoreError::NotEnoughNative {
-                    denom: coin.denom.clone(),
-                    lack: coin.amount * multiplier,
+                    denom: denom.to_string(),
+                    lack: amount_req * multiplier - amount,
                 });
             }
         }
@@ -521,9 +621,9 @@ impl Task {
         api: &dyn Api,
         cron_addr: &Addr,
         task_hash: &str,
-    ) -> Result<Vec<Cw20CoinVerified>, CoreError> {
+    ) -> Result<HashMap<Addr, Uint128>, CoreError> {
         let actions = self.actions.iter();
-        let mut cw20_coins = vec![];
+        let mut cw20_coins = HashMap::new();
         for action in actions {
             if let CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr, msg, ..
@@ -534,18 +634,29 @@ impl Task {
                         task_hash: task_hash.to_owned(),
                     });
                 }
+                let validated_addr = api.addr_validate(contract_addr)?;
                 if let Ok(cw20_msg) = cosmwasm_std::from_binary(msg) {
                     match cw20_msg {
-                        Cw20ExecuteMsg::Send { amount, .. } if !amount.is_zero() => cw20_coins
-                            .find_checked_add(&Cw20CoinVerified {
-                                address: api.addr_validate(contract_addr)?,
-                                amount,
-                            })?,
-                        Cw20ExecuteMsg::Transfer { amount, .. } if !amount.is_zero() => cw20_coins
-                            .find_checked_add(&Cw20CoinVerified {
-                                address: api.addr_validate(contract_addr)?,
-                                amount,
-                            })?,
+                        Cw20ExecuteMsg::Send { amount, .. } if !amount.is_zero() => {
+                            let am = cw20_coins
+                                .get(&validated_addr)
+                                .map(Uint128::to_owned)
+                                .unwrap_or_default();
+                            cw20_coins.insert(
+                                validated_addr,
+                                amount.checked_add(am).map_err(StdError::overflow)?,
+                            );
+                        }
+                        Cw20ExecuteMsg::Transfer { amount, .. } if !amount.is_zero() => {
+                            let am = cw20_coins
+                                .get(&validated_addr)
+                                .map(Uint128::to_owned)
+                                .unwrap_or_default();
+                            cw20_coins.insert(
+                                validated_addr,
+                                amount.checked_add(am).map_err(StdError::overflow)?,
+                            );
+                        }
                         _ => {
                             return Err(CoreError::TaskNoLongerValid {
                                 task_hash: task_hash.to_owned(),
@@ -566,128 +677,6 @@ pub fn calculate_required_amount(amount: u64, agent_fee: u64) -> Result<u64, Cor
         .and_then(|n| n.checked_div(100))
         .and_then(|n| n.checked_add(amount))
         .ok_or(CoreError::InvalidGas {})
-}
-
-impl FindAndMutate<'_, Coin> for Vec<Coin> {
-    fn find_checked_add(&mut self, add: &Coin) -> Result<(), CoreError> {
-        let token = self.iter_mut().find(|exist| exist.denom == add.denom);
-        match token {
-            Some(exist) => {
-                exist.amount = exist
-                    .amount
-                    .checked_add(add.amount)
-                    .map_err(StdError::overflow)?
-            }
-            None => self.push(add.clone()),
-        }
-        Ok(())
-    }
-
-    fn find_checked_sub(&mut self, sub: &Coin) -> Result<(), CoreError> {
-        let coin = self.iter().position(|exist| exist.denom == sub.denom);
-        match coin {
-            Some(exist) => {
-                match self[exist].amount.cmp(&sub.amount) {
-                    std::cmp::Ordering::Less => {
-                        return Err(CoreError::Std(StdError::overflow(OverflowError::new(
-                            Sub,
-                            self[exist].amount,
-                            sub.amount,
-                        ))))
-                    }
-                    std::cmp::Ordering::Equal => {
-                        self.swap_remove(exist);
-                    }
-                    std::cmp::Ordering::Greater => self[exist].amount -= sub.amount,
-                };
-                Ok(())
-            }
-            None => Err(CoreError::EmptyBalance {}),
-        }
-    }
-}
-
-impl FindAndMutate<'_, Cw20CoinVerified> for Vec<Cw20CoinVerified> {
-    fn find_checked_add(&mut self, add: &Cw20CoinVerified) -> Result<(), CoreError> {
-        let token = self.iter_mut().find(|exist| exist.address == add.address);
-        match token {
-            Some(exist) => {
-                exist.amount = exist
-                    .amount
-                    .checked_add(add.amount)
-                    .map_err(StdError::overflow)?
-            }
-            None => self.push(add.clone()),
-        }
-        Ok(())
-    }
-
-    fn find_checked_sub(&mut self, sub: &Cw20CoinVerified) -> Result<(), CoreError> {
-        let coin_p = self.iter().position(|exist| exist.address == sub.address);
-        match coin_p {
-            Some(exist) => {
-                match self[exist].amount.cmp(&sub.amount) {
-                    std::cmp::Ordering::Less => {
-                        return Err(CoreError::Std(StdError::overflow(OverflowError::new(
-                            Sub,
-                            self[exist].amount,
-                            sub.amount,
-                        ))))
-                    }
-                    std::cmp::Ordering::Equal => {
-                        self.swap_remove(exist);
-                    }
-                    std::cmp::Ordering::Greater => self[exist].amount -= sub.amount,
-                };
-                Ok(())
-            }
-            None => Err(CoreError::EmptyBalance {}),
-        }
-    }
-}
-
-impl<'a, T, Rhs> BalancesOperations<'a, T, Rhs> for Vec<T>
-where
-    Rhs: IntoIterator<Item = &'a T>,
-    Self: FindAndMutate<'a, T>,
-    T: 'a,
-{
-    fn checked_add_coins(&mut self, add: Rhs) -> Result<(), CoreError> {
-        for add_token in add {
-            self.find_checked_add(add_token)?;
-        }
-        Ok(())
-    }
-
-    fn checked_sub_coins(&mut self, sub: Rhs) -> Result<(), CoreError> {
-        for sub_token in sub {
-            self.find_checked_sub(sub_token)?;
-        }
-        Ok(())
-    }
-}
-
-impl GenericBalance {
-    pub fn checked_add_native(&mut self, add: &[Coin]) -> Result<(), CoreError> {
-        self.native.checked_add_coins(add)
-    }
-
-    pub fn checked_add_cw20(&mut self, add: &[Cw20CoinVerified]) -> Result<(), CoreError> {
-        self.cw20.checked_add_coins(add)
-    }
-
-    pub fn checked_sub_native(&mut self, sub: &[Coin]) -> Result<(), CoreError> {
-        self.native.checked_sub_coins(sub)
-    }
-
-    pub fn checked_sub_cw20(&mut self, sub: &[Cw20CoinVerified]) -> Result<(), CoreError> {
-        self.cw20.checked_sub_coins(sub)
-    }
-
-    pub fn checked_sub_generic(&mut self, sub: &GenericBalance) -> Result<(), CoreError> {
-        self.checked_sub_native(&sub.native)?;
-        self.checked_sub_cw20(&sub.cw20)
-    }
 }
 
 impl ResultFailed for SubMsgResult {

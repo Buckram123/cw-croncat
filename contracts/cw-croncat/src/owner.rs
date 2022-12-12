@@ -1,13 +1,13 @@
 use crate::balancer::BalancerMode;
 use crate::error::ContractError;
-use crate::state::{Config, CwCroncat};
+use crate::state::{Config, Cw20ByOwner, CwCroncat};
 use cosmwasm_std::{
-    has_coins, to_binary, BankMsg, Coin, Deps, DepsMut, Env, MessageInfo, Order, Response,
+    has_coins, to_binary, Addr, BankMsg, Coin, Deps, DepsMut, Env, MessageInfo, Order, Response,
     StdResult, SubMsg, Uint64, WasmMsg,
 };
 use cw20::{Balance, Cw20CoinVerified, Cw20ExecuteMsg};
 use cw_croncat_core::msg::{
-    BalancesResponse, CwCroncatResponse, ExecuteMsg, GetBalancesResponse, GetConfigResponse,
+    CwCroncatResponse, ExecuteMsg, GetBalancesResponse, GetConfigResponse,
     GetWalletBalancesResponse, RoundRobinBalancerModeResponse, SlotResponse,
     SlotWithQueriesResponse,
 };
@@ -107,12 +107,30 @@ impl<'a> CwCroncat<'a> {
         &self,
         deps: Deps,
         wallet: String,
+        from_index: Option<u64>,
+        limit: Option<u64>,
     ) -> StdResult<GetWalletBalancesResponse> {
         let addr = deps.api.addr_validate(&wallet)?;
-        let balances = self.users_balances.may_load(deps.storage, &addr)?;
-        Ok(GetWalletBalancesResponse {
-            cw20_balances: balances.unwrap_or_default(),
-        })
+        let c = self.config.load(deps.storage)?;
+
+        let from_index = from_index.unwrap_or_default();
+        let limit = limit.unwrap_or(c.limit);
+
+        let balances = self
+            .users_balances_cw20
+            .prefix(&addr)
+            .range(deps.storage, None, None, Order::Ascending)
+            .skip(from_index as usize)
+            .take(limit as usize)
+            .collect::<StdResult<Vec<(Addr, Cw20ByOwner)>>>()?;
+        let cw20_balances = balances
+            .into_iter()
+            .map(|(_, cw20_by_owner)| Cw20CoinVerified {
+                address: cw20_by_owner.address,
+                amount: cw20_by_owner.amount,
+            })
+            .collect();
+        Ok(GetWalletBalancesResponse { cw20_balances })
     }
 
     /// Changes core configurations
@@ -381,20 +399,6 @@ impl<'a> CwCroncat<'a> {
             })
             .collect();
 
-        let balances: Vec<BalancesResponse> = self
-            .users_balances
-            .range(deps.storage, None, None, Order::Ascending)
-            .skip(from_index_unwrap as usize)
-            .take(limit_unwrap as usize)
-            .map(|res| {
-                let res = res.unwrap();
-                BalancesResponse {
-                    address: res.0,
-                    balances: res.1,
-                }
-            })
-            .collect();
-
         let balancer_mode = match self.balancer.mode {
             BalancerMode::ActivationOrder => RoundRobinBalancerModeResponse::ActivationOrder,
             BalancerMode::Equalizer => RoundRobinBalancerModeResponse::Equalizer,
@@ -455,7 +459,6 @@ impl<'a> CwCroncat<'a> {
             reply_index: Uint64::from(self.reply_index.load(deps.storage)?),
             agent_nomination_begin_time: self.agent_nomination_begin_time.load(deps.storage)?,
 
-            balances,
             balancer_mode,
         })
     }

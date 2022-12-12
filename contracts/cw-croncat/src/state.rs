@@ -199,7 +199,8 @@ pub struct CwCroncat<'a> {
         IndexedMap<'a, (&'a Addr, &'a Addr), Cw20ByOwner, Cw20BalanceIndexes<'a>>,
 
     pub balancer: RoundRobinBalancer,
-    pub users_balances: Map<'a, &'a Addr, Vec<Cw20CoinVerified>>,
+    pub users_balances_cw20:
+        IndexedMap<'a, (&'a Addr, &'a Addr), Cw20ByOwner, Cw20BalanceIndexes<'a>>,
 }
 
 impl Default for CwCroncat<'static> {
@@ -252,6 +253,17 @@ impl<'a> CwCroncat<'a> {
                 "agents_cw20__owner_addr",
             ),
         };
+        let user_cw20_indexes = Cw20BalanceIndexes {
+            owner: MultiIndex::new(
+                |_pk, idx| idx.owner.clone(),
+                "users_cw20",
+                "users_cw20__owner",
+            ),
+            owner_addr: UniqueIndex::new(
+                |idx| (idx.owner.clone(), idx.address.clone()),
+                "users_cw20__owner_addr",
+            ),
+        };
         Self {
             config: Item::new("config"),
             agents: Map::new("agents"),
@@ -275,7 +287,7 @@ impl<'a> CwCroncat<'a> {
             agent_balances_native: IndexedMap::new("agents_native", agent_native_indexes),
             agent_balances_cw20: IndexedMap::new("agents_cw20", agent_cw20_indexes),
             balancer: RoundRobinBalancer::default(),
-            users_balances: Map::new("balances"),
+            users_balances_cw20: IndexedMap::new("users_cw20", user_cw20_indexes),
         }
     }
 

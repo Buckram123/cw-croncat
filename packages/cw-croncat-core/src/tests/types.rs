@@ -1,13 +1,12 @@
 use crate::{
     error::CoreError,
     msg::TaskRequest,
-    types::{Action, Boundary, BoundaryValidated, GenericBalance, Interval, Task, Transform},
+    types::{Action, Boundary, BoundaryValidated, Interval, Task, Transform},
 };
 use cosmwasm_std::{
     coins, testing::mock_dependencies, Addr, BankMsg, Binary, Coin, CosmosMsg, GovMsg, IbcMsg,
-    IbcTimeout, StdError, Timestamp, Uint64, VoteOption, WasmMsg,
+    IbcTimeout, Timestamp, Uint64, VoteOption, WasmMsg,
 };
-use cw20::Cw20CoinVerified;
 use cw_rules_core::types::{CroncatQuery, HasBalanceGte};
 use hex::ToHex;
 use sha2::{Digest, Sha256};
@@ -314,165 +313,6 @@ fn is_valid_msg_send_should_success() {
             5
         )
         .is_ok());
-}
-
-#[test]
-fn test_add_tokens() {
-    let mut coins: GenericBalance = GenericBalance::default();
-
-    // Adding zero doesn't change the state
-    let add_zero: Vec<Coin> = vec![];
-    coins.checked_add_native(&add_zero).unwrap();
-    assert!(coins.native.is_empty());
-    assert!(coins.cw20.is_empty());
-
-    // Check that we can add native coin for the first time
-    let add_native = vec![Coin::new(10, "native")];
-    coins.checked_add_native(&add_native).unwrap();
-    assert_eq!(coins.native.len(), 1);
-    assert_eq!(coins.native, add_native);
-    assert!(coins.cw20.is_empty());
-
-    // Check that we can add the same native coin again
-    let add_native = vec![Coin::new(20, "native")];
-    coins.checked_add_native(&add_native).unwrap();
-    assert_eq!(coins.native.len(), 1);
-    assert_eq!(coins.native, vec![Coin::new(30, "native")]);
-    assert!(coins.cw20.is_empty());
-
-    // Check that we can add a coin for the first time
-    let cw20 = Cw20CoinVerified {
-        address: Addr::unchecked("cw20"),
-        amount: (1000_u128).into(),
-    };
-    let add_cw20: Vec<Cw20CoinVerified> = vec![cw20.clone()];
-    coins.checked_add_cw20(&add_cw20).unwrap();
-    assert_eq!(coins.native.len(), 1);
-    assert_eq!(coins.native, vec![Coin::new(30, "native")]);
-    assert_eq!(coins.cw20.len(), 1);
-    assert_eq!(coins.cw20[0], cw20);
-
-    // Check that we can add the same coin again
-    let cw20 = Cw20CoinVerified {
-        address: Addr::unchecked("cw20"),
-        amount: (2000_u128).into(),
-    };
-    let add_cw20: Vec<Cw20CoinVerified> = vec![cw20];
-    coins.checked_add_cw20(&add_cw20).unwrap();
-    assert_eq!(coins.native.len(), 1);
-    assert_eq!(coins.native, vec![Coin::new(30, "native")]);
-    assert_eq!(coins.cw20.len(), 1);
-    let cw20_result = Cw20CoinVerified {
-        address: Addr::unchecked("cw20"),
-        amount: (3000_u128).into(),
-    };
-    assert_eq!(coins.cw20[0], cw20_result);
-}
-
-#[test]
-fn test_add_tokens_overflow_native() {
-    let mut coins: GenericBalance = GenericBalance::default();
-    // Adding one coin
-    let add_native = vec![Coin::new(1, "native")];
-    coins.checked_add_native(&add_native).unwrap();
-
-    // Adding u128::MAX amount should fail
-    let add_max = vec![Coin::new(u128::MAX, "native")];
-    let err = coins.checked_add_native(&add_max).unwrap_err();
-    assert!(matches!(err, CoreError::Std(StdError::Overflow { .. })))
-}
-
-#[test]
-fn test_add_tokens_overflow_cw20() {
-    let mut coins: GenericBalance = GenericBalance::default();
-    // Adding one coin
-    let cw20 = Cw20CoinVerified {
-        address: Addr::unchecked("cw20"),
-        amount: (1_u128).into(),
-    };
-    let add_cw20 = vec![cw20];
-    coins.checked_add_cw20(&add_cw20).unwrap();
-
-    // Adding u128::MAX amount should fail
-    let cw20_max = Cw20CoinVerified {
-        address: Addr::unchecked("cw20"),
-        amount: u128::MAX.into(),
-    };
-    let add_max: Vec<Cw20CoinVerified> = vec![cw20_max];
-    let err = coins.checked_add_cw20(&add_max).unwrap_err();
-    assert!(matches!(err, CoreError::Std(StdError::Overflow { .. })))
-}
-
-#[test]
-fn test_minus_tokens() {
-    let mut coins: GenericBalance = GenericBalance::default();
-
-    // Adding some native and cw20 tokens
-    let add_native = vec![Coin::new(100, "native")];
-    coins.checked_add_native(&add_native).unwrap();
-
-    let cw20 = Cw20CoinVerified {
-        address: Addr::unchecked("cw20"),
-        amount: (100_u128).into(),
-    };
-    let add_cw20 = vec![cw20];
-    coins.checked_add_cw20(&add_cw20).unwrap();
-
-    // Check subtraction of native token
-    let minus_native = vec![Coin::new(10, "native")];
-    coins.checked_sub_native(&minus_native).unwrap();
-    assert_eq!(coins.native, vec![Coin::new(90, "native")]);
-
-    // Check subtraction of cw20
-    let cw20 = Cw20CoinVerified {
-        address: Addr::unchecked("cw20"),
-        amount: (20_u128).into(),
-    };
-    let minus_cw20 = vec![cw20];
-    coins.checked_sub_cw20(&minus_cw20).unwrap();
-    let cw20_result = Cw20CoinVerified {
-        address: Addr::unchecked("cw20"),
-        amount: (80_u128).into(),
-    };
-    assert_eq!(coins.cw20[0], cw20_result);
-}
-
-#[test]
-fn test_minus_tokens_overflow_native() {
-    let mut coins: GenericBalance = GenericBalance::default();
-
-    // Adding some native tokens
-    let add_native = vec![Coin::new(100, "native")];
-    coins.checked_add_native(&add_native).unwrap();
-
-    // Substracting more than added should fail
-    let minus_native = vec![Coin::new(101, "native")];
-    let err = coins.checked_sub_native(&minus_native).unwrap_err();
-
-    assert!(matches!(err, CoreError::Std(StdError::Overflow { .. })))
-}
-
-#[test]
-fn test_minus_tokens_overflow_cw20() {
-    let mut coins: GenericBalance = GenericBalance::default();
-
-    // Adding some cw20 tokens
-    let cw20 = Cw20CoinVerified {
-        address: Addr::unchecked("cw20"),
-        amount: (100_u128).into(),
-    };
-    let add_cw20 = vec![cw20];
-    coins.checked_add_cw20(&add_cw20).unwrap();
-
-    // Substracting more than added should fail
-    let cw20 = Cw20CoinVerified {
-        address: Addr::unchecked("cw20"),
-        amount: (101_u128).into(),
-    };
-    let minus_cw20 = vec![cw20];
-    let err = coins.checked_sub_cw20(&minus_cw20).unwrap_err();
-
-    assert!(matches!(err, CoreError::Std(StdError::Overflow { .. })))
 }
 
 #[test]

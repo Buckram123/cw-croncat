@@ -1,6 +1,5 @@
 use cosmwasm_std::{DepsMut, MessageInfo, Response};
 use cw20::{Cw20CoinVerified, Cw20ReceiveMsg};
-use cw_croncat_core::traits::BalancesOperations;
 
 use crate::{ContractError, CwCroncat};
 
@@ -16,31 +15,17 @@ impl<'a> CwCroncat<'a> {
         let coin_address = info.sender;
 
         // Updating user balance
-        let new_balances = self.users_balances.update(
-            deps.storage,
-            &sender,
-            |balances| -> Result<_, ContractError> {
-                let mut balances = balances.unwrap_or_default();
-                balances.checked_add_coins(&[Cw20CoinVerified {
-                    address: coin_address.clone(),
-                    amount: msg.amount,
-                }])?;
-                Ok(balances)
-            },
-        )?;
+        let verified = Cw20CoinVerified {
+            address: coin_address,
+            amount: msg.amount,
+        };
+        self.add_user_cw20(deps.storage, &sender, &verified)?;
 
         // Updating contract balance
-        self.add_availible_cw20(
-            deps.storage,
-            &Cw20CoinVerified {
-                address: coin_address,
-                amount: msg.amount,
-            },
-        )?;
+        self.add_availible_cw20(deps.storage, &verified)?;
 
-        let total_cw20_string: Vec<String> = new_balances.iter().map(ToString::to_string).collect();
         Ok(Response::new()
             .add_attribute("method", "receive_cw20")
-            .add_attribute("total_cw20_balances", format!("{total_cw20_string:?}")))
+            .add_attribute("accepted_balance", format!("{verified:?}")))
     }
 }

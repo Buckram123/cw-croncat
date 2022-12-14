@@ -7,6 +7,9 @@ members = [
   "packages/cw-rules-core",
   "packages/smart-query",
   "ci/gas-benchmark",
+
+  "contracts/lib-contract",
+  "contracts/simple-contract",
 ]
 
 [profile.release]

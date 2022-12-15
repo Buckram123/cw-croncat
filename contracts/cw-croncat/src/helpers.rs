@@ -1,7 +1,4 @@
-use crate::state::{CoinByOwner, Config, Cw20ByOwner, QueueItem};
-// use cosmwasm_std::Binary;
-// use cosmwasm_std::StdError;
-// use thiserror::Error;
+use crate::state::{Config, QueueItem};
 
 use crate::ContractError::AgentNotRegistered;
 use crate::{ContractError, CwCroncat};
@@ -239,13 +236,12 @@ impl<'a> CwCroncat<'a> {
         storage: &mut dyn Storage,
         agent_addr: &Addr,
         coin: &Coin,
-    ) -> StdResult<CoinByOwner> {
+    ) -> StdResult<Coin> {
         let new_bal = self.agent_balances_native.update(
             storage,
             (agent_addr, &coin.denom),
-            |bal| -> StdResult<CoinByOwner> {
-                let mut bal = bal.unwrap_or(CoinByOwner {
-                    owner: agent_addr.clone(),
+            |bal| -> StdResult<Coin> {
+                let mut bal = bal.unwrap_or(Coin {
                     denom: coin.denom.clone(),
                     amount: Default::default(),
                 });
@@ -261,13 +257,12 @@ impl<'a> CwCroncat<'a> {
         storage: &mut dyn Storage,
         user_addr: &Addr,
         cw20: &Cw20CoinVerified,
-    ) -> StdResult<Cw20ByOwner> {
+    ) -> StdResult<Cw20CoinVerified> {
         let new_bal = self.users_balances_cw20.update(
             storage,
             (user_addr, &cw20.address),
-            |bal| -> StdResult<Cw20ByOwner> {
-                let mut bal = bal.unwrap_or(Cw20ByOwner {
-                    owner: user_addr.clone(),
+            |bal| -> StdResult<Cw20CoinVerified> {
+                let mut bal = bal.unwrap_or(Cw20CoinVerified {
                     address: cw20.address.clone(),
                     amount: Default::default(),
                 });
@@ -283,13 +278,12 @@ impl<'a> CwCroncat<'a> {
         storage: &mut dyn Storage,
         user_addr: &Addr,
         cw20: &Cw20CoinVerified,
-    ) -> StdResult<Cw20ByOwner> {
+    ) -> StdResult<Cw20CoinVerified> {
         let new_bal = self.users_balances_cw20.update(
             storage,
             (user_addr, &cw20.address),
-            |bal| -> StdResult<Cw20ByOwner> {
-                let mut bal = bal.unwrap_or(Cw20ByOwner {
-                    owner: user_addr.clone(),
+            |bal| -> StdResult<Cw20CoinVerified> {
+                let mut bal = bal.unwrap_or(Cw20CoinVerified {
                     address: cw20.address.clone(),
                     amount: Default::default(),
                 });
@@ -318,12 +312,8 @@ impl<'a> CwCroncat<'a> {
                 .agent_balances_native
                 .load(storage, (agent_addr, &native_key))?;
 
-            self.agent_balances_native.replace(
-                storage,
-                (agent_addr, &native_key),
-                None,
-                Some(&old),
-            )?;
+            self.agent_balances_native
+                .remove(storage, (agent_addr, &native_key));
             if !old.amount.is_zero() {
                 native_coins.push(coin(old.amount.u128(), &old.denom));
             }
@@ -340,7 +330,7 @@ impl<'a> CwCroncat<'a> {
                 .agent_balances_cw20
                 .load(storage, (agent_addr, &cw20_key))?;
             self.agent_balances_cw20
-                .replace(storage, (agent_addr, &cw20_key), None, Some(&old))?;
+                .remove(storage, (agent_addr, &cw20_key));
             cw20_coins.push(Cw20CoinVerified {
                 address: old.address,
                 amount: old.amount,

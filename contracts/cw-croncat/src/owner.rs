@@ -1,6 +1,6 @@
 use crate::balancer::BalancerMode;
 use crate::error::ContractError;
-use crate::state::{Config, Cw20ByOwner, CwCroncat};
+use crate::state::{Config, CwCroncat};
 use cosmwasm_std::{
     has_coins, to_binary, Addr, BankMsg, Coin, Deps, DepsMut, Env, MessageInfo, Order, Response,
     StdResult, SubMsg, Uint64, WasmMsg,
@@ -122,7 +122,7 @@ impl<'a> CwCroncat<'a> {
             .range(deps.storage, None, None, Order::Ascending)
             .skip(from_index as usize)
             .take(limit as usize)
-            .collect::<StdResult<Vec<(Addr, Cw20ByOwner)>>>()?;
+            .collect::<StdResult<Vec<(Addr, Cw20CoinVerified)>>>()?;
         let cw20_balances = balances
             .into_iter()
             .map(|(_, cw20_by_owner)| Cw20CoinVerified {

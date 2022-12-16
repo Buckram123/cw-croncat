@@ -40,7 +40,7 @@ where
             required_balance: coins(1, &denom).into(),
         })]),
         transforms: None,
-        cw20_coins: vec![],
+        cw20_coin: None,
     };
     let msg = cw_croncat_core::msg::ExecuteMsg::CreateTask { task };
     orc.execute(

@@ -278,19 +278,26 @@ impl<'a> CwCroncat<'a> {
         storage: &mut dyn Storage,
         user_addr: &Addr,
         cw20: &Cw20CoinVerified,
-    ) -> StdResult<Cw20CoinVerified> {
-        let new_bal = self.users_balances_cw20.update(
-            storage,
-            (user_addr, &cw20.address),
-            |bal| -> StdResult<Cw20CoinVerified> {
-                let mut bal = bal.unwrap_or(Cw20CoinVerified {
-                    address: cw20.address.clone(),
-                    amount: Default::default(),
-                });
-                bal.amount = bal.amount.checked_sub(cw20.amount)?;
-                Ok(bal)
-            },
-        )?;
+    ) -> Result<Cw20CoinVerified, ContractError> {
+        let current_balance = self
+            .users_balances_cw20
+            .may_load(storage, (user_addr, &cw20.address))?;
+        let mut new_bal = if let Some(bal) = current_balance {
+            bal
+        } else {
+            return Err(ContractError::EmptyBalance {});
+        };
+        new_bal.amount = new_bal
+            .amount
+            .checked_sub(cw20.amount)
+            .map_err(StdError::overflow)?;
+        if new_bal.amount.is_zero() {
+            self.users_balances_cw20
+                .remove(storage, (user_addr, &cw20.address));
+        } else {
+            self.users_balances_cw20
+                .save(storage, (user_addr, &cw20.address), &new_bal)?;
+        }
         Ok(new_bal)
     }
 

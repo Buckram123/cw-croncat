@@ -111,7 +111,7 @@ fn query_get_tasks() {
             }],
             queries: None,
             transforms: None,
-            cw20_coins: vec![],
+            cw20_coin: None,
         },
     };
 
@@ -173,7 +173,7 @@ fn query_get_tasks_pagination() {
             }],
             queries: None,
             transforms: None,
-            cw20_coins: vec![],
+            cw20_coin: None,
         },
     };
 
@@ -324,7 +324,7 @@ fn check_task_create_fail_cases() -> StdResult<()> {
             }],
             queries: None,
             transforms: None,
-            cw20_coins: vec![],
+            cw20_coin: None,
         },
     };
     // let task_id_str = "95c916a53fa9d26deef094f7e1ee31c00a2d47b8bf474b2e06d39aebfb1fecc7".to_string();
@@ -422,7 +422,7 @@ fn check_task_create_fail_cases() -> StdResult<()> {
                 }],
                 queries: None,
                 transforms: None,
-                cw20_coins: vec![],
+                cw20_coin: None,
             },
         },
         &coins(13, NATIVE_DENOM),
@@ -452,7 +452,7 @@ fn check_task_create_fail_cases() -> StdResult<()> {
                 }],
                 queries: None,
                 transforms: None,
-                cw20_coins: vec![],
+                cw20_coin: None,
             },
         },
         &coins(13, NATIVE_DENOM),
@@ -478,7 +478,7 @@ fn check_task_create_fail_cases() -> StdResult<()> {
                     }],
                     queries: None,
                     transforms: None,
-                    cw20_coins: vec![],
+                    cw20_coin: None,
                 },
             },
             &coins(13, NATIVE_DENOM),
@@ -533,7 +533,7 @@ fn check_task_create_fail_cases() -> StdResult<()> {
                     }],
                     queries: None,
                     transforms: None,
-                    cw20_coins: vec![],
+                    cw20_coin: None,
                 },
             },
             &coins(315006, NATIVE_DENOM),
@@ -572,7 +572,7 @@ fn check_task_create_success() -> StdResult<()> {
             }],
             queries: None,
             transforms: None,
-            cw20_coins: vec![],
+            cw20_coin: None,
         },
     };
     let task_id_str =
@@ -668,7 +668,7 @@ fn check_task_with_queries_create_success() -> StdResult<()> {
                 required_balance: coins(5, "bar").into(),
             })]),
             transforms: None,
-            cw20_coins: vec![],
+            cw20_coin: None,
         },
     };
 
@@ -743,7 +743,7 @@ fn check_task_with_queries_and_without_create_success() -> StdResult<()> {
                 required_balance: coins(5, "bar").into(),
             })]),
             transforms: None,
-            cw20_coins: vec![],
+            cw20_coin: None,
         },
     };
 
@@ -758,7 +758,7 @@ fn check_task_with_queries_and_without_create_success() -> StdResult<()> {
             }],
             queries: None,
             transforms: None,
-            cw20_coins: vec![],
+            cw20_coin: None,
         },
     };
 
@@ -845,7 +845,7 @@ fn check_remove_create() -> StdResult<()> {
             }],
             queries: None,
             transforms: None,
-            cw20_coins: vec![],
+            cw20_coin: None,
         },
     };
     let task_id_str =
@@ -961,7 +961,7 @@ fn check_refill_create() -> StdResult<()> {
             }],
             queries: None,
             transforms: None,
-            cw20_coins: vec![],
+            cw20_coin: None,
         },
     };
     let task_id_str =
@@ -1056,7 +1056,7 @@ fn check_gas_minimum() {
             }],
             queries: None,
             transforms: None,
-            cw20_coins: vec![],
+            cw20_coin: None,
         },
     };
     // create 1 token off task
@@ -1118,7 +1118,7 @@ fn check_gas_default() {
             }],
             queries: None,
             transforms: None,
-            cw20_coins: vec![],
+            cw20_coin: None,
         },
     };
     // create 1 token off task

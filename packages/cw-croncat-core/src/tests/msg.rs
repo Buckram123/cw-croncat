@@ -108,7 +108,7 @@ fn everything_can_be_de_serialized() {
         actions: vec![],
         queries: None,
         transforms: None, // TODO
-        cw20_coins: vec![],
+        cw20_coin: None,
     }
     .into();
     let task_response_raw = TaskResponse {
@@ -121,9 +121,9 @@ fn everything_can_be_de_serialized() {
         }),
         stop_on_fail: true,
         total_deposit_native: vec![coin(5, "earth")],
-        total_deposit_cw20: vec![],
+        total_deposit_cw20: None,
         amount_for_one_task_native: vec![coin(4, "earth")],
-        amount_for_one_task_cw20: vec![],
+        amount_for_one_task_cw20: None,
         actions: vec![],
         queries: None,
     };

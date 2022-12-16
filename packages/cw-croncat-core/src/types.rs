@@ -10,7 +10,7 @@ use hex::encode;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use std::{collections::HashMap, str::FromStr};
+use std::str::FromStr;
 
 use crate::{
     error::CoreError,
@@ -300,118 +300,93 @@ impl TaskRequest {
     }
 }
 
-#[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct TaskBalance {
-    /// Denom: Amount
-    native: HashMap<String, Uint128>,
-    /// Cw20Addr: Amount
-    cw20: HashMap<Addr, Uint128>,
+    /// Can contain IBC in the future
+    native: Vec<Coin>,
+    /// Up to one cw20 coin
+    // It's very suspicious to have multiple cw20 transfers in single tx
+    cw20: Option<Cw20CoinVerified>,
 }
 
 impl TaskBalance {
     pub fn from_coins(coins: &[Coin]) -> StdResult<Self> {
-        let mut task_balance = TaskBalance {
-            native: HashMap::with_capacity(coins.len()),
+        let task_balance = TaskBalance {
+            native: Vec::from(coins),
             cw20: Default::default(),
         };
-        for coin in coins {
-            task_balance.add_native_coin(coin)?;
-        }
         Ok(task_balance)
     }
 
     pub fn add_native_coin(&mut self, coin: &Coin) -> StdResult<()> {
-        let current_amount = self
-            .native
-            .get(&coin.denom)
-            .map(Uint128::to_owned)
-            .unwrap_or_default();
-        self.native.insert(
-            coin.denom.to_owned(),
-            current_amount
-                .checked_add(coin.amount)
-                .map_err(StdError::overflow)?,
-        );
+        let current_coin = self.native.iter_mut().find(|c| c.denom == coin.denom);
+        if let Some(current) = current_coin {
+            let new_amount = current.amount.checked_add(coin.amount)?;
+            current.amount = new_amount;
+        } else {
+            self.native.push(coin.clone())
+        }
         Ok(())
     }
 
     pub fn sub_native_coin(&mut self, coin: &Coin) -> StdResult<()> {
-        let current_amount = self
-            .native
-            .get(&coin.denom)
-            .map(Uint128::to_owned)
-            .unwrap_or_default();
-        let new_amount = current_amount.checked_sub(coin.amount)?;
+        let current_coin_idx = self.native.iter().position(|c| c.denom == coin.denom);
 
-        // Clean up if zero
-        if new_amount.is_zero() {
-            self.native.remove(&coin.denom);
+        if let Some(current_idx) = current_coin_idx {
+            let new_amount = self.native[current_idx].amount.checked_sub(coin.amount)?;
+
+            // Clean up if zero
+            if new_amount.is_zero() {
+                self.native.remove(current_idx);
+            } else {
+                self.native[current_idx].amount = new_amount;
+            }
         } else {
-            self.native.insert(
-                coin.denom.to_owned(),
-                current_amount
-                    .checked_sub(coin.amount)
-                    .map_err(StdError::overflow)?,
-            );
+            Uint128::zero()
+                .checked_sub(coin.amount)
+                .map_err(StdError::overflow)?;
         }
         Ok(())
     }
 
-    pub fn sub_cw20_coin(&mut self, cw20: &Cw20CoinVerified) -> StdResult<()> {
-        let current_amount = self
-            .cw20
-            .get(&cw20.address)
-            .map(Uint128::to_owned)
-            .unwrap_or_default();
-        let new_amount = current_amount.checked_sub(cw20.amount)?;
-
-        // Clean up if zero
-        if new_amount.is_zero() {
-            self.cw20.remove(&cw20.address);
+    pub fn sub_cw20_coin(&mut self, cw20: &Cw20CoinVerified) -> Result<(), CoreError> {
+        if let Some(current_cw20) = self.cw20.as_mut() {
+            if current_cw20.address != cw20.address {
+                return Err(CoreError::TooMuchCw20PerTask {});
+            }
+            current_cw20.amount = current_cw20
+                .amount
+                .checked_sub(cw20.amount)
+                .map_err(StdError::overflow)?;
         } else {
-            self.cw20.insert(
-                cw20.address.to_owned(),
-                current_amount
-                    .checked_sub(cw20.amount)
-                    .map_err(StdError::overflow)?,
-            );
+            Uint128::zero()
+                .checked_sub(cw20.amount)
+                .map_err(StdError::overflow)?;
         }
         Ok(())
     }
 
-    pub fn add_cw20_coin(&mut self, cw20: &Cw20CoinVerified) -> StdResult<()> {
-        let current_amount = self
-            .cw20
-            .get(&cw20.address)
-            .map(Uint128::to_owned)
-            .unwrap_or_default();
-        self.cw20.insert(
-            cw20.address.to_owned(),
-            current_amount
+    pub fn add_cw20_coin(&mut self, cw20: &Cw20CoinVerified) -> Result<(), CoreError> {
+        if let Some(current_cw20) = self.cw20.as_mut() {
+            if current_cw20.address != cw20.address {
+                return Err(CoreError::TooMuchCw20PerTask {});
+            }
+            current_cw20.amount = current_cw20
+                .amount
                 .checked_add(cw20.amount)
-                .map_err(StdError::overflow)?,
-        );
+                .map_err(StdError::overflow)?;
+        } else {
+            self.cw20 = Some(cw20.clone());
+        }
         Ok(())
     }
 
-    pub fn native_coins(&self) -> Vec<Coin> {
-        self.native
-            .iter()
-            .map(|(denom, &amount)| Coin {
-                denom: denom.to_owned(),
-                amount,
-            })
-            .collect()
+    pub fn native_coins(&self) -> &[Coin] {
+        self.native.as_ref()
     }
 
-    pub fn cw20_coins(&self) -> Vec<Cw20CoinVerified> {
-        self.cw20
-            .iter()
-            .map(|(address, &amount)| Cw20CoinVerified {
-                address: address.to_owned(),
-                amount,
-            })
-            .collect()
+    pub fn cw20_coin(&self) -> Option<&Cw20CoinVerified> {
+        self.cw20.as_ref()
     }
 }
 
@@ -468,30 +443,43 @@ impl Task {
     }
 
     pub fn verify_enough_cw20(&self, multiplier: Uint128) -> Result<(), CoreError> {
-        for (addr, amount_req) in self.amount_for_one_task.cw20.iter() {
-            let amount = self
-                .total_deposit
-                .cw20
-                .get(addr)
-                .map(Uint128::to_owned)
-                .unwrap_or_default();
-            if amount < (amount_req * multiplier) {
-                return Err(CoreError::NotEnoughCw20 {
-                    addr: addr.to_string(),
-                    lack: amount_req * multiplier - amount,
-                });
+        match (&self.amount_for_one_task.cw20, &self.total_deposit.cw20) {
+            (Some(cw20_req), Some(cw20_deposit)) if cw20_req.address != cw20_deposit.address => {
+                Err(CoreError::NotEnoughCw20 {
+                    addr: cw20_req.address.to_string(),
+                    lack: cw20_req.amount * multiplier,
+                })
             }
+            (Some(cw20_req), None) => Err(CoreError::NotEnoughCw20 {
+                addr: cw20_req.address.to_string(),
+                lack: cw20_req.amount * multiplier,
+            }),
+            (Some(cw20_req), Some(cw20_deposit)) => {
+                if cw20_deposit.amount < cw20_req.amount {
+                    Err(CoreError::NotEnoughCw20 {
+                        addr: cw20_req.address.to_string(),
+                        lack: cw20_req.amount * multiplier - cw20_deposit.amount,
+                    })
+                } else {
+                    Ok(())
+                }
+            }
+            (None, Some(_cw20_deposit)) => Err(CoreError::RedundantCw20 {}),
+            (None, None) => Ok(()),
         }
-        Ok(())
     }
 
     pub fn verify_enough_native(&self, multiplier: Uint128) -> Result<(), CoreError> {
-        for (denom, amount_req) in self.amount_for_one_task.native.iter() {
+        for Coin {
+            denom,
+            amount: amount_req,
+        } in self.amount_for_one_task.native.iter()
+        {
             let amount = self
                 .total_deposit
                 .native
-                .get(denom)
-                .map(Uint128::to_owned)
+                .iter()
+                .find_map(|c| c.denom.eq(denom).then_some(c.amount))
                 .unwrap_or_default();
             if amount < (amount_req * multiplier) {
                 return Err(CoreError::NotEnoughNative {
@@ -621,9 +609,15 @@ impl Task {
         api: &dyn Api,
         cron_addr: &Addr,
         task_hash: &str,
-    ) -> Result<HashMap<Addr, Uint128>, CoreError> {
+    ) -> Result<Option<Cw20CoinVerified>, CoreError> {
+        // TODO: replace with let else
+        let current_cw20 = if let Some(current) = &self.amount_for_one_task.cw20 {
+            current
+        } else {
+            return Ok(None);
+        };
         let actions = self.actions.iter();
-        let mut cw20_coins = HashMap::new();
+        let mut cw20_amount = Uint128::zero();
         for action in actions {
             if let CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr, msg, ..
@@ -635,27 +629,23 @@ impl Task {
                     });
                 }
                 let validated_addr = api.addr_validate(contract_addr)?;
-                if let Ok(cw20_msg) = cosmwasm_std::from_binary(msg) {
+                if let Ok(cw20_msg) = cosmwasm_std::from_binary::<Cw20ExecuteMsg>(msg) {
+                    // Don't let change type of cw20
+                    if validated_addr != current_cw20.address {
+                        return Err(CoreError::TaskNoLongerValid {
+                            task_hash: task_hash.to_owned(),
+                        });
+                    }
                     match cw20_msg {
                         Cw20ExecuteMsg::Send { amount, .. } if !amount.is_zero() => {
-                            let am = cw20_coins
-                                .get(&validated_addr)
-                                .map(Uint128::to_owned)
-                                .unwrap_or_default();
-                            cw20_coins.insert(
-                                validated_addr,
-                                amount.checked_add(am).map_err(StdError::overflow)?,
-                            );
+                            cw20_amount = cw20_amount
+                                .checked_add(amount)
+                                .map_err(StdError::overflow)?;
                         }
                         Cw20ExecuteMsg::Transfer { amount, .. } if !amount.is_zero() => {
-                            let am = cw20_coins
-                                .get(&validated_addr)
-                                .map(Uint128::to_owned)
-                                .unwrap_or_default();
-                            cw20_coins.insert(
-                                validated_addr,
-                                amount.checked_add(am).map_err(StdError::overflow)?,
-                            );
+                            cw20_amount = cw20_amount
+                                .checked_add(amount)
+                                .map_err(StdError::overflow)?;
                         }
                         _ => {
                             return Err(CoreError::TaskNoLongerValid {
@@ -666,7 +656,10 @@ impl Task {
                 }
             }
         }
-        Ok(cw20_coins)
+        Ok(Some(Cw20CoinVerified {
+            address: current_cw20.address.clone(),
+            amount: cw20_amount,
+        }))
     }
 }
 

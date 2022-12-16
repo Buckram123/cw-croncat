@@ -53,10 +53,10 @@ fn test_cw20_action() {
             }],
             queries: None,
             transforms: None,
-            cw20_coins: vec![Cw20Coin {
+            cw20_coin: Some(Cw20Coin {
                 address: cw20_contract.to_string(),
                 amount: 10u128.into(),
-            }],
+            }),
         },
     };
     app.execute_contract(
@@ -184,10 +184,10 @@ fn test_cw20_balances() {
             }],
             queries: None,
             transforms: None,
-            cw20_coins: vec![Cw20Coin {
+            cw20_coin: Some(Cw20Coin {
                 address: cw20_contract.to_string(),
                 amount: 10u128.into(),
-            }],
+            }),
         },
     };
     let mut resp = app
@@ -219,10 +219,10 @@ fn test_cw20_balances() {
         .unwrap();
     assert_eq!(
         task.total_deposit_cw20,
-        vec![Cw20CoinVerified {
+        Some(Cw20CoinVerified {
             address: cw20_contract.clone(),
             amount: 10u128.into()
-        }]
+        })
     );
     // And user balances decreased
     let balances: GetWalletBalancesResponse = app
@@ -268,10 +268,10 @@ fn test_cw20_negative() {
             }],
             queries: None,
             transforms: None,
-            cw20_coins: vec![Cw20Coin {
+            cw20_coin: Some(Cw20Coin {
                 address: cw20_contract.to_string(),
                 amount: 10u128.into(),
-            }],
+            }),
         },
     };
     let resp: ContractError = app
@@ -284,7 +284,7 @@ fn test_cw20_negative() {
         .unwrap_err()
         .downcast()
         .unwrap();
-    assert_eq!(resp, ContractError::CoreError(CoreError::EmptyBalance {}));
+    assert_eq!(resp, ContractError::EmptyBalance {});
     // or with not enough balance
 
     // fill balance of cw20 tokens of user
@@ -313,7 +313,7 @@ fn test_cw20_negative() {
         .unwrap();
     assert!(matches!(
         resp,
-        ContractError::CoreError(CoreError::Std(StdError::Overflow { .. }))
+        ContractError::Std(StdError::Overflow { .. })
     ));
 
     // Create a task that does cw20 transfer without attaching cw20 to the task
@@ -328,7 +328,7 @@ fn test_cw20_negative() {
             }],
             queries: None,
             transforms: None,
-            cw20_coins: vec![],
+            cw20_coin: None,
         },
     };
     let resp: ContractError = app
@@ -344,5 +344,5 @@ fn test_cw20_negative() {
     println!("resp: {resp:?}");
     assert!(matches!(
                 resp,
-                ContractError::CoreError(CoreError::NotEnoughCw20 { lack, .. }) if lack == Uint128::from(10_u128)));
+                ContractError::CoreError(CoreError::NotEnoughCw20 { lack, .. }) if lack == Uint128::from(20_u128)));
 }

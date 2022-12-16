@@ -47,7 +47,7 @@ fn proxy_call_fail_cases() -> StdResult<()> {
             }],
             queries: None,
             transforms: None,
-            cw20_coins: vec![],
+            cw20_coin: None,
         },
     };
     let task_id_str =
@@ -272,7 +272,7 @@ fn proxy_call_success() -> StdResult<()> {
             }],
             queries: None,
             transforms: None,
-            cw20_coins: vec![],
+            cw20_coin: None,
         },
     };
 
@@ -432,7 +432,7 @@ fn proxy_call_no_task_and_withdraw() -> StdResult<()> {
             }],
             queries: None,
             transforms: None,
-            cw20_coins: vec![],
+            cw20_coin: None,
         },
     };
     let gas_for_one = GAS_BASE_FEE_JUNO + gas_limit;
@@ -533,7 +533,7 @@ fn proxy_callback_fail_cases() -> StdResult<()> {
             }],
             queries: None,
             transforms: None,
-            cw20_coins: vec![],
+            cw20_coin: None,
         },
     };
 
@@ -656,7 +656,7 @@ fn proxy_callback_fail_cases() -> StdResult<()> {
             }],
             queries: None,
             transforms: None,
-            cw20_coins: vec![],
+            cw20_coin: None,
         },
     };
 
@@ -760,7 +760,7 @@ fn proxy_callback_block_slots() -> StdResult<()> {
             }],
             queries: None,
             transforms: None,
-            cw20_coins: vec![],
+            cw20_coin: None,
         },
     };
 
@@ -889,7 +889,7 @@ fn proxy_callback_time_slots() -> StdResult<()> {
             }],
             queries: None,
             transforms: None,
-            cw20_coins: vec![],
+            cw20_coin: None,
         },
     };
 
@@ -1028,7 +1028,7 @@ fn proxy_call_several_tasks() -> StdResult<()> {
             }],
             queries: None,
             transforms: None,
-            cw20_coins: vec![],
+            cw20_coin: None,
         },
     };
 
@@ -1043,7 +1043,7 @@ fn proxy_call_several_tasks() -> StdResult<()> {
             }],
             queries: None,
             transforms: None,
-            cw20_coins: vec![],
+            cw20_coin: None,
         },
     };
 
@@ -1058,7 +1058,7 @@ fn proxy_call_several_tasks() -> StdResult<()> {
             }],
             queries: None,
             transforms: None,
-            cw20_coins: vec![],
+            cw20_coin: None,
         },
     };
 
@@ -1159,7 +1159,7 @@ fn test_proxy_call_with_bank_message() -> StdResult<()> {
             }],
             queries: None,
             transforms: None,
-            cw20_coins: vec![],
+            cw20_coin: None,
         },
     };
     let amount_for_one_task =
@@ -1218,7 +1218,7 @@ fn test_proxy_call_with_bank_message_should_fail() -> StdResult<()> {
             }],
             queries: None,
             transforms: None,
-            cw20_coins: vec![],
+            cw20_coin: None,
         },
     };
     // create 1 token off task
@@ -1294,7 +1294,7 @@ fn test_multi_action() {
             ],
             queries: None,
             transforms: None,
-            cw20_coins: vec![],
+            cw20_coin: None,
         },
     };
     let gas_limit = GAS_ACTION_FEE_JUNO;
@@ -1366,7 +1366,7 @@ fn test_balance_changes() {
             ],
             queries: None,
             transforms: None,
-            cw20_coins: vec![],
+            cw20_coin: None,
         },
     };
     let gas_for_one = GAS_BASE_FEE_JUNO + (GAS_ACTION_FEE_JUNO * 2);
@@ -1499,7 +1499,7 @@ fn test_no_reschedule_if_lack_balance() {
             }],
             queries: None,
             transforms: None,
-            cw20_coins: vec![],
+            cw20_coin: None,
         },
     };
 
@@ -1626,7 +1626,7 @@ fn test_complete_task_with_query() {
                 required_balance: coins(1, NATIVE_DENOM).into(),
             })]),
             transforms: None,
-            cw20_coins: vec![],
+            cw20_coin: None,
         },
     };
 
@@ -1736,7 +1736,7 @@ fn test_reschedule_task_with_queries() {
                 required_balance: coins(1, NATIVE_DENOM).into(),
             })]),
             transforms: None,
-            cw20_coins: vec![],
+            cw20_coin: None,
         },
     };
 
@@ -2009,7 +2009,7 @@ fn tick_task() -> StdResult<()> {
             }],
             queries: None,
             transforms: None,
-            cw20_coins: vec![],
+            cw20_coin: None,
         },
     };
     // create a task with tick
@@ -2035,7 +2035,7 @@ fn tick_task() -> StdResult<()> {
             }],
             queries: None,
             transforms: None,
-            cw20_coins: vec![],
+            cw20_coin: None,
         },
     };
     // create a second task so that another agent can be registered
@@ -2124,7 +2124,7 @@ fn testing_fee_works() {
             }],
             queries: None,
             transforms: None,
-            cw20_coins: vec![],
+            cw20_coin: None,
         },
     };
     let delegate = StakingMsg::Delegate {
@@ -2142,7 +2142,7 @@ fn testing_fee_works() {
             }],
             queries: None,
             transforms: None,
-            cw20_coins: vec![],
+            cw20_coin: None,
         },
     };
     let total_gas = GAS_BASE_FEE_JUNO + GAS_ACTION_FEE_JUNO;
@@ -2323,7 +2323,7 @@ fn smart_query() {
             }],
             queries: Some(vec![smart_query]),
             transforms: None,
-            cw20_coins: vec![],
+            cw20_coin: None,
         },
     };
 
@@ -2478,10 +2478,10 @@ fn insertable_query_res_positive() {
                 ]),
                 query_response_path: PathToValue(vec![]),
             }]),
-            cw20_coins: vec![Cw20Coin {
+            cw20_coin: Some(Cw20Coin {
                 address: cw20_addr.to_string(),
                 amount: 10u128.into(),
-            }],
+            }),
         },
     };
 
@@ -2678,11 +2678,11 @@ fn insertable_query_res_negative() {
                 ]),
                 query_response_path: PathToValue(vec![]),
             }]),
-            cw20_coins: vec![Cw20Coin {
+            cw20_coin: Some(Cw20Coin {
                 address: cw20_addr.to_string(),
                 // Notice that would be not enough
                 amount: 1u128.into(),
-            }],
+            }),
         },
     };
 
@@ -2896,7 +2896,7 @@ fn test_error_in_reply() {
             }],
             queries: None,
             transforms: None,
-            cw20_coins: vec![],
+            cw20_coin: None,
         },
     };
 

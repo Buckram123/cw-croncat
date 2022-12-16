@@ -9,9 +9,6 @@ pub enum CoreError {
     #[error("Boundary is not in valid format")]
     InvalidBoundary {},
 
-    #[error("No coin balance found")]
-    EmptyBalance {},
-
     #[error("Not enough cw20 balance of {addr}, need {lack} more")]
     NotEnoughCw20 { addr: String, lack: Uint128 },
 
@@ -29,6 +26,13 @@ pub enum CoreError {
 
     #[error("Task({task_hash}) became invalid after replacing placeholder")]
     TaskNoLongerValid { task_hash: String },
+
     #[error("Must provide gas limit for WASM actions")]
     NoGasLimit {},
+
+    #[error("Up to one cw20 coin supported per task")]
+    TooMuchCw20PerTask {},
+
+    #[error("This task doesn't require cw20 attachments")]
+    RedundantCw20 {},
 }

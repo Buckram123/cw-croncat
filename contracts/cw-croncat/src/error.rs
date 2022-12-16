@@ -42,6 +42,9 @@ pub enum ContractError {
     #[error("No queries for this task hash: {task_hash}")]
     NoQueriesForThisTask { task_hash: String },
 
+    #[error("No coin balance found")]
+    EmptyBalance {},
+
     #[error("Custom Error val: {val:?}")]
     CustomError { val: String },
     // Add any other custom errors you like here.

@@ -353,7 +353,7 @@ fn test_get_state() {
             }],
             queries: None,
             transforms: None,
-            cw20_coins: vec![],
+            cw20_coin: None,
         },
     };
 

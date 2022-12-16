@@ -276,7 +276,7 @@ pub struct TaskRequest {
     pub actions: Vec<Action>,
     pub queries: Option<Vec<CroncatQuery>>,
     pub transforms: Option<Vec<Transform>>,
-    pub cw20_coins: Vec<Cw20Coin>,
+    pub cw20_coin: Option<Cw20Coin>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -290,9 +290,9 @@ pub struct TaskResponse {
 
     pub stop_on_fail: bool,
     pub total_deposit_native: Vec<Coin>,
-    pub total_deposit_cw20: Vec<Cw20CoinVerified>,
+    pub total_deposit_cw20: Option<Cw20CoinVerified>,
     pub amount_for_one_task_native: Vec<Coin>,
-    pub amount_for_one_task_cw20: Vec<Cw20CoinVerified>,
+    pub amount_for_one_task_cw20: Option<Cw20CoinVerified>,
 
     pub actions: Vec<Action>,
     pub queries: Option<Vec<CroncatQuery>>,
@@ -391,10 +391,10 @@ impl From<Task> for TaskResponse {
             interval: task.interval,
             boundary,
             stop_on_fail: task.stop_on_fail,
-            total_deposit_native: task.total_deposit.native_coins(),
-            total_deposit_cw20: task.total_deposit.cw20_coins(),
-            amount_for_one_task_native: task.amount_for_one_task.native_coins(),
-            amount_for_one_task_cw20: task.amount_for_one_task.cw20_coins(),
+            total_deposit_native: task.total_deposit.native_coins().to_owned(),
+            total_deposit_cw20: task.total_deposit.cw20_coin().cloned(),
+            amount_for_one_task_native: task.amount_for_one_task.native_coins().to_owned(),
+            amount_for_one_task_cw20: task.amount_for_one_task.cw20_coin().cloned(),
             actions: task.actions,
             queries: task.queries,
         }

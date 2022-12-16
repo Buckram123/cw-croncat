@@ -224,14 +224,14 @@ impl<'a> CwCroncat<'a> {
 
         let owner_id = &info.sender;
         let mut total_deposit = TaskBalance::from_coins(&info.funds)?;
-        for coin in &task.cw20_coins {
+        if let Some(coin) = &task.cw20_coin {
             let verified = Cw20CoinVerified {
                 address: deps.api.addr_validate(&coin.address)?,
                 amount: coin.amount,
             };
             total_deposit.add_cw20_coin(&verified)?;
             // update user balance
-            self.add_user_cw20(deps.storage, owner_id, &verified)?;
+            self.sub_user_cw20(deps.storage, owner_id, &verified)?;
         }
         let boundary = BoundaryValidated::validate_boundary(task.boundary, &task.interval)?;
 
@@ -463,8 +463,8 @@ impl<'a> CwCroncat<'a> {
         };
 
         // return any remaining total_cw20_deposit to the owner
-        for coin in task.total_deposit.cw20_coins() {
-            self.add_user_cw20(storage, &task.owner_id, &coin)?;
+        if let Some(coin) = task.total_deposit.cw20_coin() {
+            self.add_user_cw20(storage, &task.owner_id, coin)?;
         }
         // remove from the total available_balance
         let task_native_coins = task.total_deposit.native_coins();
@@ -472,12 +472,12 @@ impl<'a> CwCroncat<'a> {
             self.sub_availible_native(storage, coin)?;
         }
         // setup sub-msgs for returning any remaining total_deposit to the owner
-        if task_native_coins.is_empty() {
+        if !task_native_coins.is_empty() {
             Ok(Response::new()
                 .add_attribute("method", "remove_task")
                 .add_submessage(SubMsg::new(BankMsg::Send {
                     to_address: task.owner_id.into(),
-                    amount: task_native_coins,
+                    amount: task_native_coins.to_owned(),
                 })))
         } else {
             Ok(Response::new().add_attribute("method", "remove_task"))
@@ -530,13 +530,20 @@ impl<'a> CwCroncat<'a> {
             self.add_availible_native(deps.storage, coin)?;
             task.total_deposit.add_native_coin(coin)?;
         }
-
         // update the task and the config
         self.tasks.save(deps.storage, &hash_vec, &task)?;
 
+        // return the task total
+        let coins_total: Vec<String> = task
+            .total_deposit
+            .native_coins()
+            .iter()
+            .map(ToString::to_string)
+            .collect();
+
         Ok(Response::new()
             .add_attribute("method", "refill_task")
-            .add_attribute("total_deposit", format!("{:?}", task.total_deposit)))
+            .add_attribute("total_deposit", format!("{coins_total:?}")))
     }
 
     /// Refill a task with more cw20 balance from user `balance` to continue its execution

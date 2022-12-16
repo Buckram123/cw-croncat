@@ -19,13 +19,13 @@ impl<'a> CwCroncat<'a> {
             address: coin_address,
             amount: msg.amount,
         };
-        self.add_user_cw20(deps.storage, &sender, &verified)?;
+        let new_bal = self.add_user_cw20(deps.storage, &sender, &verified)?;
 
         // Updating contract balance
         self.add_availible_cw20(deps.storage, &verified)?;
 
         Ok(Response::new()
             .add_attribute("method", "receive_cw20")
-            .add_attribute("accepted_balance", format!("{verified:?}")))
+            .add_attribute("total_cw20_balance", format!("{new_bal:?}")))
     }
 }

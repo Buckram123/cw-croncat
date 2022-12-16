@@ -39,7 +39,7 @@ where
         }],
         queries: None,
         transforms: None,
-        cw20_coins: vec![],
+        cw20_coin: None,
     };
     let msg = cw_croncat_core::msg::ExecuteMsg::CreateTask { task };
     orc.execute(
@@ -85,7 +85,7 @@ pub(crate) fn send_to_bob_recurring(denom: &str) -> TaskRequest {
         }],
         queries: None,
         transforms: None,
-        cw20_coins: vec![],
+        cw20_coin: None,
     }
 }
 
@@ -113,7 +113,7 @@ pub(crate) fn send_to_bob_and_alice_recurring(denom: &str) -> TaskRequest {
         actions: vec![send_to_bob, send_to_alice],
         queries: None,
         transforms: None,
-        cw20_coins: vec![],
+        cw20_coin: None,
     }
 }
 
@@ -140,10 +140,10 @@ pub(crate) fn send_cw20_to_bob_recurring(cw20_addr: &str, times: u128) -> TaskRe
         actions: vec![send_cw20_to_bob],
         queries: None,
         transforms: None,
-        cw20_coins: vec![Cw20Coin {
+        cw20_coin: Some(Cw20Coin {
             address: cw20_addr.to_owned(),
             amount: (times * amount).into(),
-        }],
+        }),
     }
 }
 
@@ -184,10 +184,10 @@ pub(crate) fn send_cw20_to_bob_and_alice_recurring(cw20_addr: &str, times: u128)
         actions: vec![send_cw20_to_bob, send_cw20_to_alice],
         queries: None,
         transforms: None,
-        cw20_coins: vec![Cw20Coin {
+        cw20_coin: Some(Cw20Coin {
             address: cw20_addr.to_owned(),
             amount: (times * amount).into(),
-        }],
+        }),
     }
 }
 
@@ -205,7 +205,7 @@ pub(crate) fn delegate_to_bob_recurring(denom: &str) -> TaskRequest {
         }],
         queries: None,
         transforms: None,
-        cw20_coins: vec![],
+        cw20_coin: None,
     }
 }
 
@@ -231,7 +231,7 @@ pub(crate) fn delegate_to_bob_and_alice_recurring(denom: &str) -> TaskRequest {
         actions: vec![delegate_to_bob, delegate_to_alice],
         queries: None,
         transforms: None,
-        cw20_coins: vec![],
+        cw20_coin: None,
     }
 }
 
@@ -253,7 +253,7 @@ pub(crate) fn delegate_to_validator(denom: &str) -> TaskRequest {
         actions: vec![delegate_to_validator],
         queries: None,
         transforms: None,
-        cw20_coins: vec![],
+        cw20_coin: None,
     }
 }
 
@@ -275,7 +275,7 @@ pub(crate) fn delegate_to_validator_twice(denom: &str) -> TaskRequest {
         actions: vec![delegate_to_validator.clone(), delegate_to_validator],
         queries: None,
         transforms: None,
-        cw20_coins: vec![],
+        cw20_coin: None,
     }
 }
 
@@ -322,9 +322,9 @@ pub(crate) fn send_cw20_to_insertable_addr(
             ]),
             query_response_path: PathToValue(vec![]),
         }]),
-        cw20_coins: vec![Cw20Coin {
+        cw20_coin: Some(Cw20Coin {
             address: cw20_addr.to_owned(),
             amount: amount.into(),
-        }],
+        }),
     }
 }

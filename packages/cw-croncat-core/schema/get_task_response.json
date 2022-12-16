@@ -1022,14 +1022,12 @@
       "type": "object",
       "required": [
         "actions",
-        "amount_for_one_task_cw20",
         "amount_for_one_task_native",
         "interval",
         "owner_id",
         "stop_on_fail",
         "task_hash",
-        "total_cw20_deposit",
-        "total_deposit"
+        "total_deposit_native"
       ],
       "properties": {
         "actions": {
@@ -1039,10 +1037,14 @@
           }
         },
         "amount_for_one_task_cw20": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/Cw20CoinVerified"
-          }
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Cw20CoinVerified"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "amount_for_one_task_native": {
           "type": "array",
@@ -1081,13 +1083,17 @@
         "task_hash": {
           "type": "string"
         },
-        "total_cw20_deposit": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/Cw20CoinVerified"
-          }
+        "total_deposit_cw20": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Cw20CoinVerified"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
-        "total_deposit": {
+        "total_deposit_native": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/Coin"

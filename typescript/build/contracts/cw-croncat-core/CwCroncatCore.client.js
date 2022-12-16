@@ -22,9 +22,12 @@ class CwCroncatCoreQueryClient {
                 get_config: {}
             });
         });
-        this.getBalances = () => __awaiter(this, void 0, void 0, function* () {
+        this.getBalances = ({ fromIndex, limit }) => __awaiter(this, void 0, void 0, function* () {
             return this.client.queryContractSmart(this.contractAddress, {
-                get_balances: {}
+                get_balances: {
+                    from_index: fromIndex,
+                    limit
+                }
             });
         });
         this.getAgent = ({ accountId }) => __awaiter(this, void 0, void 0, function* () {
@@ -102,9 +105,11 @@ class CwCroncatCoreQueryClient {
                 get_slot_ids: {}
             });
         });
-        this.getWalletBalances = ({ wallet }) => __awaiter(this, void 0, void 0, function* () {
+        this.getWalletBalances = ({ fromIndex, limit, wallet }) => __awaiter(this, void 0, void 0, function* () {
             return this.client.queryContractSmart(this.contractAddress, {
                 get_wallet_balances: {
+                    from_index: fromIndex,
+                    limit,
                     wallet
                 }
             });
@@ -190,9 +195,11 @@ class CwCroncatCoreClient extends CwCroncatCoreQueryClient {
                 }
             }, fee, memo, funds);
         });
-        this.withdrawReward = (fee = "auto", memo, funds) => __awaiter(this, void 0, void 0, function* () {
+        this.withdrawReward = ({ limit }, fee = "auto", memo, funds) => __awaiter(this, void 0, void 0, function* () {
             return yield this.client.execute(this.sender, this.contractAddress, {
-                withdraw_reward: {}
+                withdraw_reward: {
+                    limit
+                }
             }, fee, memo, funds);
         });
         this.createTask = ({ task }, fee = "auto", memo, funds) => __awaiter(this, void 0, void 0, function* () {

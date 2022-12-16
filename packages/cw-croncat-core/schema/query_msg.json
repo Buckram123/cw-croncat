@@ -21,7 +21,25 @@
       ],
       "properties": {
         "get_balances": {
-          "type": "object"
+          "type": "object",
+          "properties": {
+            "from_index": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          }
         }
       },
       "additionalProperties": false
@@ -264,6 +282,22 @@
             "wallet"
           ],
           "properties": {
+            "from_index": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
+            },
             "wallet": {
               "type": "string"
             }
@@ -766,27 +800,6 @@
     "Empty": {
       "description": "An empty struct that serves as a placeholder in different places, such as contracts that don't set a custom message.\n\nIt is designed to be expressable in correct JSON and JSON Schema but contains no meaningful data. Previously we used enums without cases, but those cannot represented as valid JSON Schema (https://github.com/CosmWasm/cosmwasm/issues/451)",
       "type": "object"
-    },
-    "GenericBalance": {
-      "type": "object",
-      "required": [
-        "cw20",
-        "native"
-      ],
-      "properties": {
-        "cw20": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/Cw20CoinVerified"
-          }
-        },
-        "native": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/Coin"
-          }
-        }
-      }
     },
     "GenericQuery": {
       "type": "object",
@@ -1303,7 +1316,7 @@
           }
         },
         "amount_for_one_task": {
-          "$ref": "#/definitions/GenericBalance"
+          "$ref": "#/definitions/TaskBalance"
         },
         "boundary": {
           "$ref": "#/definitions/BoundaryValidated"
@@ -1342,7 +1355,7 @@
           "description": "NOTE: Only tally native balance here, manager can maintain token/balances outside of tasks",
           "allOf": [
             {
-              "$ref": "#/definitions/GenericBalance"
+              "$ref": "#/definitions/TaskBalance"
             }
           ]
         },
@@ -1357,6 +1370,32 @@
         },
         "version": {
           "type": "string"
+        }
+      }
+    },
+    "TaskBalance": {
+      "type": "object",
+      "required": [
+        "native"
+      ],
+      "properties": {
+        "cw20": {
+          "description": "Up to one cw20 coin",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Cw20CoinVerified"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "native": {
+          "description": "Can contain IBC in the future",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Coin"
+          }
         }
       }
     },

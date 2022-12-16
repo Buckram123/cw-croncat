@@ -204,7 +204,17 @@
       ],
       "properties": {
         "withdraw_reward": {
-          "type": "object"
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          }
         }
       },
       "additionalProperties": false
@@ -1432,7 +1442,6 @@
       "type": "object",
       "required": [
         "actions",
-        "cw20_coins",
         "interval",
         "stop_on_fail"
       ],
@@ -1453,11 +1462,15 @@
             }
           ]
         },
-        "cw20_coins": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/Cw20Coin"
-          }
+        "cw20_coin": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Cw20Coin"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "interval": {
           "$ref": "#/definitions/Interval"

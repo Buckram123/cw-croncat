@@ -5,9 +5,9 @@
 */
 
 export type Addr = string;
-export type Uint128 = string;
 export type Timestamp = Uint64;
 export type Uint64 = string;
+export type Uint128 = string;
 export type SlotType = "Block" | "Cron";
 export type AgentStatus = "Active" | "Pending" | "Nominated";
 export type CosmosMsgForEmpty = {
@@ -210,16 +210,19 @@ export interface Croncat {
   [k: string]: unknown;
 }
 export interface Agent {
-  balance: GenericBalance;
   last_executed_slot: number;
   payable_account_id: Addr;
   register_start: Timestamp;
   total_tasks_executed: number;
   [k: string]: unknown;
 }
-export interface GenericBalance {
-  cw20: Cw20CoinVerified[];
-  native: Coin[];
+export interface GetBalancesResponse {
+  available_cw20_balance: Cw20CoinVerified[];
+  available_native_balance: Coin[];
+  cw20_whitelist: Addr[];
+  native_denom: string;
+  staked_cw20_balance: Cw20CoinVerified[];
+  staked_native_balance: Coin[];
   [k: string]: unknown;
 }
 export interface Cw20CoinVerified {
@@ -232,19 +235,11 @@ export interface Coin {
   denom: string;
   [k: string]: unknown;
 }
-export interface GetBalancesResponse {
-  available_balance: GenericBalance;
-  cw20_whitelist: Addr[];
-  native_denom: string;
-  staked_balance: GenericBalance;
-  [k: string]: unknown;
-}
 export interface GetConfigResponse {
   agent_active_indices: [SlotType, number, number][];
   agent_fee: number;
   agent_nomination_duration: number;
   agents_eject_threshold: number;
-  available_balance: GenericBalance;
   cw20_whitelist: Addr[];
   cw_rules_addr: Addr;
   gas_action_fee: number;
@@ -257,7 +252,6 @@ export interface GetConfigResponse {
   paused: boolean;
   proxy_callback_gas: number;
   slot_granularity_time: number;
-  staked_balance: GenericBalance;
   [k: string]: unknown;
 }
 export interface GasFraction {
@@ -271,7 +265,6 @@ export interface GetAgentIdsResponse {
   [k: string]: unknown;
 }
 export interface AgentResponse {
-  balance: GenericBalance;
   last_executed_slot: number;
   payable_account_id: Addr;
   register_start: Timestamp;
@@ -300,7 +293,7 @@ export interface GetSlotIdsResponse {
 }
 export interface TaskResponse {
   actions: ActionForEmpty[];
-  amount_for_one_task_cw20: Cw20CoinVerified[];
+  amount_for_one_task_cw20?: Cw20CoinVerified | null;
   amount_for_one_task_native: Coin[];
   boundary?: Boundary | null;
   interval: Interval;
@@ -308,8 +301,8 @@ export interface TaskResponse {
   queries?: CroncatQuery[] | null;
   stop_on_fail: boolean;
   task_hash: string;
-  total_cw20_deposit: Cw20CoinVerified[];
-  total_deposit: Coin[];
+  total_deposit_cw20?: Cw20CoinVerified | null;
+  total_deposit_native: Coin[];
   [k: string]: unknown;
 }
 export interface ActionForEmpty {
@@ -377,15 +370,20 @@ export interface GetWalletBalancesResponse {
 }
 export interface Task {
   actions: ActionForEmpty[];
-  amount_for_one_task: GenericBalance;
+  amount_for_one_task: TaskBalance;
   boundary: BoundaryValidated;
   interval: Interval;
   owner_id: Addr;
   queries?: CroncatQuery[] | null;
   stop_on_fail: boolean;
-  total_deposit: GenericBalance;
+  total_deposit: TaskBalance;
   transforms?: Transform[] | null;
   version: string;
+  [k: string]: unknown;
+}
+export interface TaskBalance {
+  cw20?: Cw20CoinVerified | null;
+  native: Coin[];
   [k: string]: unknown;
 }
 export interface BoundaryValidated {
@@ -403,7 +401,7 @@ export interface Transform {
 export interface TaskRequest {
   actions: ActionForEmpty[];
   boundary?: Boundary | null;
-  cw20_coins: Cw20Coin[];
+  cw20_coin?: Cw20Coin | null;
   interval: Interval;
   queries?: CroncatQuery[] | null;
   stop_on_fail: boolean;
@@ -456,6 +454,7 @@ export type ExecuteMsg = {
   };
 } | {
   withdraw_reward: {
+    limit?: number | null;
     [k: string]: unknown;
   };
 } | {
@@ -511,7 +510,6 @@ export interface GetStateResponse {
   agent_pending_queue: Addr[];
   agents: AgentResponse[];
   balancer_mode: RoundRobinBalancerModeResponse;
-  balances: BalancesResponse[];
   block_slots: SlotResponse[];
   block_slots_queries: SlotWithQueriesResponse[];
   config: GetConfigResponse;
@@ -522,11 +520,6 @@ export interface GetStateResponse {
   tasks_with_queries_total: Uint64;
   time_slots: SlotResponse[];
   time_slots_queries: SlotWithQueriesResponse[];
-  [k: string]: unknown;
-}
-export interface BalancesResponse {
-  address: Addr;
-  balances: Cw20CoinVerified[];
   [k: string]: unknown;
 }
 export interface SlotResponse {
@@ -567,6 +560,8 @@ export type QueryMsg = {
   };
 } | {
   get_balances: {
+    from_index?: number | null;
+    limit?: number | null;
     [k: string]: unknown;
   };
 } | {
@@ -626,6 +621,8 @@ export type QueryMsg = {
   };
 } | {
   get_wallet_balances: {
+    from_index?: number | null;
+    limit?: number | null;
     wallet: string;
     [k: string]: unknown;
   };

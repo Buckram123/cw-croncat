@@ -211,16 +211,12 @@
     "Agent": {
       "type": "object",
       "required": [
-        "balance",
         "last_executed_slot",
         "payable_account_id",
         "register_start",
         "total_tasks_executed"
       ],
       "properties": {
-        "balance": {
-          "$ref": "#/definitions/GenericBalance"
-        },
         "last_executed_slot": {
           "type": "integer",
           "format": "uint64",
@@ -242,7 +238,6 @@
     "AgentResponse": {
       "type": "object",
       "required": [
-        "balance",
         "last_executed_slot",
         "payable_account_id",
         "register_start",
@@ -250,9 +245,6 @@
         "total_tasks_executed"
       ],
       "properties": {
-        "balance": {
-          "$ref": "#/definitions/GenericBalance"
-        },
         "last_executed_slot": {
           "type": "integer",
           "format": "uint64",
@@ -845,27 +837,6 @@
         }
       }
     },
-    "GenericBalance": {
-      "type": "object",
-      "required": [
-        "cw20",
-        "native"
-      ],
-      "properties": {
-        "cw20": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/Cw20CoinVerified"
-          }
-        },
-        "native": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/Coin"
-          }
-        }
-      }
-    },
     "GenericQuery": {
       "type": "object",
       "required": [
@@ -917,14 +888,25 @@
     "GetBalancesResponse": {
       "type": "object",
       "required": [
-        "available_balance",
+        "available_cw20_balance",
+        "available_native_balance",
         "cw20_whitelist",
         "native_denom",
-        "staked_balance"
+        "staked_cw20_balance",
+        "staked_native_balance"
       ],
       "properties": {
-        "available_balance": {
-          "$ref": "#/definitions/GenericBalance"
+        "available_cw20_balance": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Cw20CoinVerified"
+          }
+        },
+        "available_native_balance": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Coin"
+          }
         },
         "cw20_whitelist": {
           "type": "array",
@@ -935,8 +917,17 @@
         "native_denom": {
           "type": "string"
         },
-        "staked_balance": {
-          "$ref": "#/definitions/GenericBalance"
+        "staked_cw20_balance": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Cw20CoinVerified"
+          }
+        },
+        "staked_native_balance": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Coin"
+          }
         }
       }
     },
@@ -947,7 +938,6 @@
         "agent_fee",
         "agent_nomination_duration",
         "agents_eject_threshold",
-        "available_balance",
         "cw20_whitelist",
         "cw_rules_addr",
         "gas_action_fee",
@@ -959,8 +949,7 @@
         "owner_id",
         "paused",
         "proxy_callback_gas",
-        "slot_granularity_time",
-        "staked_balance"
+        "slot_granularity_time"
       ],
       "properties": {
         "agent_active_indices": {
@@ -1000,9 +989,6 @@
           "type": "integer",
           "format": "uint64",
           "minimum": 0.0
-        },
-        "available_balance": {
-          "$ref": "#/definitions/GenericBalance"
         },
         "cw20_whitelist": {
           "type": "array",
@@ -1054,9 +1040,6 @@
           "type": "integer",
           "format": "uint64",
           "minimum": 0.0
-        },
-        "staked_balance": {
-          "$ref": "#/definitions/GenericBalance"
         }
       }
     },
@@ -1627,7 +1610,7 @@
           }
         },
         "amount_for_one_task": {
-          "$ref": "#/definitions/GenericBalance"
+          "$ref": "#/definitions/TaskBalance"
         },
         "boundary": {
           "$ref": "#/definitions/BoundaryValidated"
@@ -1666,7 +1649,7 @@
           "description": "NOTE: Only tally native balance here, manager can maintain token/balances outside of tasks",
           "allOf": [
             {
-              "$ref": "#/definitions/GenericBalance"
+              "$ref": "#/definitions/TaskBalance"
             }
           ]
         },
@@ -1684,11 +1667,36 @@
         }
       }
     },
+    "TaskBalance": {
+      "type": "object",
+      "required": [
+        "native"
+      ],
+      "properties": {
+        "cw20": {
+          "description": "Up to one cw20 coin",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Cw20CoinVerified"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "native": {
+          "description": "Can contain IBC in the future",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Coin"
+          }
+        }
+      }
+    },
     "TaskRequest": {
       "type": "object",
       "required": [
         "actions",
-        "cw20_coins",
         "interval",
         "stop_on_fail"
       ],
@@ -1709,11 +1717,15 @@
             }
           ]
         },
-        "cw20_coins": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/Cw20Coin"
-          }
+        "cw20_coin": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Cw20Coin"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "interval": {
           "$ref": "#/definitions/Interval"
@@ -1745,14 +1757,12 @@
       "type": "object",
       "required": [
         "actions",
-        "amount_for_one_task_cw20",
         "amount_for_one_task_native",
         "interval",
         "owner_id",
         "stop_on_fail",
         "task_hash",
-        "total_cw20_deposit",
-        "total_deposit"
+        "total_deposit_native"
       ],
       "properties": {
         "actions": {
@@ -1762,10 +1772,14 @@
           }
         },
         "amount_for_one_task_cw20": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/Cw20CoinVerified"
-          }
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Cw20CoinVerified"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "amount_for_one_task_native": {
           "type": "array",
@@ -1804,13 +1818,17 @@
         "task_hash": {
           "type": "string"
         },
-        "total_cw20_deposit": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/Cw20CoinVerified"
-          }
+        "total_deposit_cw20": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Cw20CoinVerified"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
-        "total_deposit": {
+        "total_deposit_native": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/Coin"

@@ -7,7 +7,6 @@
     "agent_pending_queue",
     "agents",
     "balancer_mode",
-    "balances",
     "block_slots",
     "block_slots_queries",
     "config",
@@ -50,12 +49,6 @@
     },
     "balancer_mode": {
       "$ref": "#/definitions/RoundRobinBalancerModeResponse"
-    },
-    "balances": {
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/BalancesResponse"
-      }
     },
     "block_slots": {
       "type": "array",
@@ -139,7 +132,6 @@
     "AgentResponse": {
       "type": "object",
       "required": [
-        "balance",
         "last_executed_slot",
         "payable_account_id",
         "register_start",
@@ -147,9 +139,6 @@
         "total_tasks_executed"
       ],
       "properties": {
-        "balance": {
-          "$ref": "#/definitions/GenericBalance"
-        },
         "last_executed_slot": {
           "type": "integer",
           "format": "uint64",
@@ -206,24 +195,6 @@
           "additionalProperties": false
         }
       ]
-    },
-    "BalancesResponse": {
-      "type": "object",
-      "required": [
-        "address",
-        "balances"
-      ],
-      "properties": {
-        "address": {
-          "$ref": "#/definitions/Addr"
-        },
-        "balances": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/Cw20CoinVerified"
-          }
-        }
-      }
     },
     "BankMsg": {
       "description": "The message types of the bank module.\n\nSee https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/bank/v1beta1/tx.proto",
@@ -701,27 +672,6 @@
         }
       }
     },
-    "GenericBalance": {
-      "type": "object",
-      "required": [
-        "cw20",
-        "native"
-      ],
-      "properties": {
-        "cw20": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/Cw20CoinVerified"
-          }
-        },
-        "native": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/Coin"
-          }
-        }
-      }
-    },
     "GenericQuery": {
       "type": "object",
       "required": [
@@ -756,7 +706,6 @@
         "agent_fee",
         "agent_nomination_duration",
         "agents_eject_threshold",
-        "available_balance",
         "cw20_whitelist",
         "cw_rules_addr",
         "gas_action_fee",
@@ -768,8 +717,7 @@
         "owner_id",
         "paused",
         "proxy_callback_gas",
-        "slot_granularity_time",
-        "staked_balance"
+        "slot_granularity_time"
       ],
       "properties": {
         "agent_active_indices": {
@@ -809,9 +757,6 @@
           "type": "integer",
           "format": "uint64",
           "minimum": 0.0
-        },
-        "available_balance": {
-          "$ref": "#/definitions/GenericBalance"
         },
         "cw20_whitelist": {
           "type": "array",
@@ -863,9 +808,6 @@
           "type": "integer",
           "format": "uint64",
           "minimum": 0.0
-        },
-        "staked_balance": {
-          "$ref": "#/definitions/GenericBalance"
         }
       }
     },
@@ -1397,14 +1339,12 @@
       "type": "object",
       "required": [
         "actions",
-        "amount_for_one_task_cw20",
         "amount_for_one_task_native",
         "interval",
         "owner_id",
         "stop_on_fail",
         "task_hash",
-        "total_cw20_deposit",
-        "total_deposit"
+        "total_deposit_native"
       ],
       "properties": {
         "actions": {
@@ -1414,10 +1354,14 @@
           }
         },
         "amount_for_one_task_cw20": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/Cw20CoinVerified"
-          }
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Cw20CoinVerified"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "amount_for_one_task_native": {
           "type": "array",
@@ -1456,13 +1400,17 @@
         "task_hash": {
           "type": "string"
         },
-        "total_cw20_deposit": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/Cw20CoinVerified"
-          }
+        "total_deposit_cw20": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Cw20CoinVerified"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
-        "total_deposit": {
+        "total_deposit_native": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/Coin"

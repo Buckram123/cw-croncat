@@ -13,6 +13,7 @@ pub enum ExecuteMsg {
         boundary: Option<Boundary>,
         interval: Interval,
     },
+    GetConfig {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]

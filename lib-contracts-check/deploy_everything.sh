@@ -10,6 +10,9 @@ CONTRACT_ID=$($BINARY tx wasm store "/artifacts/simple_contract.wasm" -y --from 
 $BINARY tx wasm instantiate $LIB_ID '{}' --from validator --label "cw_rules" $TXFLAG -y --no-admin
 LIB=$($BINARY query wasm list-contract-by-code $LIB_ID --output json | jq -r '.contracts[-1]')
 
-$BINARY tx wasm instantiate $CONTRACT_ID '{"lib_contract_addr":"'$LIB'"}' --from validator --label "cw_rules" $TXFLAG -y --no-admin
+$BINARY tx wasm instantiate $LIB_ID '{}' --from validator --label "cw_rules" $TXFLAG -y --no-admin
+LIB2=$($BINARY query wasm list-contract-by-code $LIB_ID --output json | jq -r '.contracts[-1]')
+
+$BINARY tx wasm instantiate $CONTRACT_ID '{"lib_contract_addr":"'$LIB'", "lib_contract_addr2": "'$LIB2'"}' --from validator --label "cw_rules" $TXFLAG -y --no-admin
 CONTRACT=$($BINARY query wasm list-contract-by-code $CONTRACT_ID --output json | jq -r '.contracts[-1]')
 set +e

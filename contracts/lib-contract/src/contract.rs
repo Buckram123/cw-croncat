@@ -12,7 +12,7 @@ use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::CONFIG;
 
 // Trying to increase wasm size to check how it affects gas cost
-const FILLER: [u64; 20_000] = [450; 20_000];
+const FILLER: [u64; 0] = [450; 0];
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -52,7 +52,7 @@ pub fn instantiate(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
-    _deps: DepsMut,
+    deps: DepsMut,
     _env: Env,
     _info: MessageInfo,
     msg: ExecuteMsg,
@@ -63,6 +63,11 @@ pub fn execute(
                 .map_err(|e| StdError::generic_err(e.to_string()))?;
             let validated_bin = to_binary(&validated)?;
             Ok(Response::new().set_data(validated_bin))
+        }
+        ExecuteMsg::GetConfig {} => {
+            let config = CONFIG.load(deps.storage)?;
+            let config_bin = to_binary(&config)?;
+            Ok(Response::new().set_data(config_bin))
         }
     }
 }

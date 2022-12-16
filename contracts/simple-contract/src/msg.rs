@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "snake_case")]
 pub struct InstantiateMsg {
     pub lib_contract_addr: String,
+    pub lib_contract_addr2: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
@@ -31,6 +32,26 @@ pub enum ExecuteMsg {
     },
 
     ValidateBoundaryLibExReply {
+        boundary: Option<Boundary>,
+        interval: Interval,
+    },
+
+    ValidateBoundaryConfigLib {
+        boundary: Option<Boundary>,
+        interval: Interval,
+    },
+
+    ValidateBoundaryLibConfigLib2 {
+        boundary: Option<Boundary>,
+        interval: Interval,
+    },
+
+    ValidateBoundaryConfigLibEx {
+        boundary: Option<Boundary>,
+        interval: Interval,
+    },
+
+    ValidateBoundaryLibConfigLib2Ex {
         boundary: Option<Boundary>,
         interval: Interval,
     },

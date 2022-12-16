@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_slice, to_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, Response,
-    StdError, StdResult, SubMsg, WasmMsg,
+    from_slice, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
+    StdResult, SubMsg, WasmMsg,
 };
 use cw_croncat_core::types::BoundaryValidated;
 use lib_contract::state::Config;
@@ -10,7 +10,7 @@ use lib_contract::state::Config;
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::LIB_CONTRACT_ADDR;
+use crate::state::{LIB_CONTRACT_ADDR, LIB_CONTRACT_ADDR2};
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -21,6 +21,8 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     let lib_contract = deps.api.addr_validate(&msg.lib_contract_addr)?;
     LIB_CONTRACT_ADDR.save(deps.storage, &lib_contract)?;
+    let lib2_contract = deps.api.addr_validate(&msg.lib_contract_addr2)?;
+    LIB_CONTRACT_ADDR2.save(deps.storage, &lib2_contract)?;
     Ok(Response::new().add_attribute("lib_contract_addr", lib_contract))
 }
 
@@ -64,15 +66,14 @@ pub fn execute(
         }
         ExecuteMsg::ValidateBoundaryLibEx { boundary, interval } => {
             let lib_contract_addr = LIB_CONTRACT_ADDR.load(deps.storage)?;
-            let validate_exec: CosmosMsg = WasmMsg::Execute {
+            let validate_exec = WasmMsg::Execute {
                 contract_addr: lib_contract_addr.to_string(),
                 msg: to_binary(&lib_contract::msg::ExecuteMsg::ValidateBoundary {
                     boundary,
                     interval,
                 })?,
                 funds: vec![],
-            }
-            .into();
+            };
             Ok(Response::new().add_message(validate_exec))
         }
         ExecuteMsg::ValidateBoundaryLibExReply { boundary, interval } => {
@@ -87,6 +88,74 @@ pub fn execute(
             };
             let submsg = SubMsg::reply_always(validate_exec, 0);
             Ok(Response::new().add_submessage(submsg))
+        }
+        ExecuteMsg::ValidateBoundaryConfigLib { boundary, interval } => {
+            let lib_contract_addr = LIB_CONTRACT_ADDR.load(deps.storage)?;
+            let boundary: BoundaryValidated = deps.querier.query_wasm_smart(
+                &lib_contract_addr,
+                &lib_contract::msg::QueryMsg::ValidateBoundary { boundary, interval },
+            )?;
+            let config: Config = deps.querier.query_wasm_smart(
+                &lib_contract_addr,
+                &lib_contract::msg::QueryMsg::GetConfig {},
+            )?;
+            Ok(Response::new()
+                .add_attribute("boundary", format!("{boundary:?}"))
+                .add_attribute("config", format!("{config:?}")))
+        }
+        ExecuteMsg::ValidateBoundaryLibConfigLib2 { boundary, interval } => {
+            let lib_contract_addr = LIB_CONTRACT_ADDR.load(deps.storage)?;
+            let boundary: BoundaryValidated = deps.querier.query_wasm_smart(
+                &lib_contract_addr,
+                &lib_contract::msg::QueryMsg::ValidateBoundary { boundary, interval },
+            )?;
+            let lib2_contract_addr = LIB_CONTRACT_ADDR2.load(deps.storage)?;
+            let config: Config = deps.querier.query_wasm_smart(
+                &lib2_contract_addr,
+                &lib_contract::msg::QueryMsg::GetConfig {},
+            )?;
+            Ok(Response::new()
+                .add_attribute("boundary", format!("{boundary:?}"))
+                .add_attribute("config", format!("{config:?}")))
+        }
+        ExecuteMsg::ValidateBoundaryConfigLibEx { boundary, interval } => {
+            let lib_contract_addr = LIB_CONTRACT_ADDR.load(deps.storage)?;
+            let validate_exec = WasmMsg::Execute {
+                contract_addr: lib_contract_addr.to_string(),
+                msg: to_binary(&lib_contract::msg::ExecuteMsg::ValidateBoundary {
+                    boundary,
+                    interval,
+                })?,
+                funds: vec![],
+            };
+            let boundary_exec = WasmMsg::Execute {
+                contract_addr: lib_contract_addr.to_string(),
+                msg: to_binary(&lib_contract::msg::ExecuteMsg::GetConfig {})?,
+                funds: vec![],
+            };
+            Ok(Response::new()
+                .add_message(validate_exec)
+                .add_message(boundary_exec))
+        }
+        ExecuteMsg::ValidateBoundaryLibConfigLib2Ex { boundary, interval } => {
+            let lib_contract_addr = LIB_CONTRACT_ADDR.load(deps.storage)?;
+            let validate_exec = WasmMsg::Execute {
+                contract_addr: lib_contract_addr.to_string(),
+                msg: to_binary(&lib_contract::msg::ExecuteMsg::ValidateBoundary {
+                    boundary,
+                    interval,
+                })?,
+                funds: vec![],
+            };
+            let lib2_contract_addr = LIB_CONTRACT_ADDR2.load(deps.storage)?;
+            let boundary_exec = WasmMsg::Execute {
+                contract_addr: lib2_contract_addr.to_string(),
+                msg: to_binary(&lib_contract::msg::ExecuteMsg::GetConfig {})?,
+                funds: vec![],
+            };
+            Ok(Response::new()
+                .add_message(validate_exec)
+                .add_message(boundary_exec))
         }
     }
 }

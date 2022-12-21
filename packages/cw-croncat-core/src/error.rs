@@ -9,6 +9,9 @@ pub enum CoreError {
     #[error("Boundary is not in valid format")]
     InvalidBoundary {},
 
+    #[error("Interval is not valid")]
+    InvalidInterval {},
+
     #[error("Not enough cw20 balance of {addr}, need {lack} more")]
     NotEnoughCw20 { addr: String, lack: Uint128 },
 

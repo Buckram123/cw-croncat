@@ -268,11 +268,11 @@ impl<'a> CwCroncat<'a> {
             cw20_keys,
         )?;
         for coin in native {
-            self.sub_availible_native(storage, &coin)?;
+            self.sub_available_native(storage, &coin)?;
         }
 
         for coin in cw20 {
-            self.sub_availible_cw20(storage, &coin)?;
+            self.sub_available_cw20(storage, &coin)?;
         }
 
         Ok(messages)

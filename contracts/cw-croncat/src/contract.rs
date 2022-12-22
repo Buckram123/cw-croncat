@@ -89,7 +89,7 @@ impl<'a> CwCroncat<'a> {
 
         // keep tally of balances initialized
         for coin in info.funds {
-            self.availible_native_balance
+            self.available_native_balance
                 .save(deps.storage, &coin.denom, &coin.amount)?;
         }
 

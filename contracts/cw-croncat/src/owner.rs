@@ -45,7 +45,7 @@ impl<'a> CwCroncat<'a> {
         let limit = limit.unwrap_or(c.limit);
 
         let available_native_balance = self
-            .availible_native_balance
+            .available_native_balance
             .range(deps.storage, None, None, Order::Ascending)
             .skip(from_index as usize)
             .take(limit as usize)
@@ -273,7 +273,7 @@ impl<'a> CwCroncat<'a> {
 
                         // Update internal registry balance
                         for coin in bal.iter() {
-                            self.sub_availible_native(deps.storage, coin)?;
+                            self.sub_available_native(deps.storage, coin)?;
                         }
                         Ok(SubMsg::new(BankMsg::Send {
                             to_address: account_id.clone().into(),
@@ -296,7 +296,7 @@ impl<'a> CwCroncat<'a> {
                         }
 
                         // Update internal registry balance
-                        self.sub_availible_cw20(deps.storage, token)?;
+                        self.sub_available_cw20(deps.storage, token)?;
 
                         let msg = Cw20ExecuteMsg::Transfer {
                             recipient: account_id.clone().into(),

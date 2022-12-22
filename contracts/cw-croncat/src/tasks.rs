@@ -281,7 +281,7 @@ impl<'a> CwCroncat<'a> {
         item.verify_enough_balances(recurring)?;
         // Add the attached balance into available_balance
         for coin in info.funds.iter() {
-            self.add_availible_native(deps.storage, coin)?;
+            self.add_available_native(deps.storage, coin)?;
         }
 
         let hash = item.to_hash();
@@ -415,7 +415,7 @@ impl<'a> CwCroncat<'a> {
                 }
             }
 
-            // Remove all the thangs
+            // Remove all the things
             self.tasks.remove(storage, &hash_vec)?;
 
             // find any scheduled things and remove them!
@@ -470,7 +470,7 @@ impl<'a> CwCroncat<'a> {
         // remove from the total available_balance
         let task_native_coins = task.total_deposit.native_coins();
         for coin in task_native_coins.iter() {
-            self.sub_availible_native(storage, coin)?;
+            self.sub_available_native(storage, coin)?;
         }
         // setup sub-msgs for returning any remaining total_deposit to the owner
         if !task_native_coins.is_empty() {
@@ -528,7 +528,7 @@ impl<'a> CwCroncat<'a> {
 
         // Add the attached balance into available_balance
         for coin in info.funds.iter() {
-            self.add_availible_native(deps.storage, coin)?;
+            self.add_available_native(deps.storage, coin)?;
             task.total_deposit.add_native_coin(coin)?;
         }
         // update the task and the config
@@ -605,7 +605,7 @@ impl<'a> CwCroncat<'a> {
                     amount: balance.amount,
                 };
                 // update user and croncat manager balances
-                self.sub_availible_cw20(deps.storage, &validated)?;
+                self.sub_available_cw20(deps.storage, &validated)?;
                 self.sub_user_cw20(deps.storage, &wallet, &validated)?;
                 withdraws.push(validated);
             }
@@ -629,7 +629,7 @@ impl<'a> CwCroncat<'a> {
 
         Ok(Response::new()
             .add_attribute("method", "withdraw_wallet_balances")
-            .add_attribute("withdrawed", format!("{withdraws:?}"))
+            .add_attribute("withdrawn", format!("{withdraws:?}"))
             .add_messages(msgs))
     }
 }

@@ -22,7 +22,7 @@ impl<'a> CwCroncat<'a> {
         let new_bal = self.add_user_cw20(deps.storage, &sender, &verified)?;
 
         // Updating contract balance
-        self.add_availible_cw20(deps.storage, &verified)?;
+        self.add_available_cw20(deps.storage, &verified)?;
 
         Ok(Response::new()
             .add_attribute("method", "receive_cw20")

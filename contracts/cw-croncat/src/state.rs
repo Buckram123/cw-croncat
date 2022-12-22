@@ -134,11 +134,11 @@ pub struct CwCroncat<'a> {
     pub agent_nomination_begin_time: Item<'a, Option<Timestamp>>,
 
     // Tasks + rewards balances
-    /// Availible native balance of the contract
+    /// Available native balance of the contract
     /// Key: Denom
     /// Value: Amount
-    pub availible_native_balance: Map<'a, &'a str, Uint128>,
-    /// Availible cw20 balance of the contract
+    pub available_native_balance: Map<'a, &'a str, Uint128>,
+    /// Available cw20 balance of the contract
     /// Key: Cw20 Addr
     /// Value: Amount
     pub available_cw20_balance: Map<'a, &'a Addr, Uint128>,
@@ -196,8 +196,8 @@ impl<'a> CwCroncat<'a> {
             reply_queue: Map::new("reply_queue"),
             reply_index: Item::new("reply_index"),
             agent_nomination_begin_time: Item::new("agent_nomination_begin_time"),
-            availible_native_balance: Map::new("availible_native_balance"),
-            available_cw20_balance: Map::new("availible_cw20_balance"),
+            available_native_balance: Map::new("available_native_balance"),
+            available_cw20_balance: Map::new("available_cw20_balance"),
             agent_balances_native: Map::new("agent_balances_native"),
             agent_balances_cw20: Map::new("agent_balances_cw20"),
             balancer: RoundRobinBalancer::default(),

@@ -155,11 +155,11 @@ impl<'a> CwCroncat<'a> {
             // update task balances and contract balances
             if let Some(sent) = action.bank_sent() {
                 for coin in sent {
-                    self.sub_availible_native(storage, coin)?;
+                    self.sub_available_native(storage, coin)?;
                     task.total_deposit.sub_native_coin(coin)?;
                 }
             } else if let Some(sent) = action.cw20_sent(api) {
-                self.sub_availible_cw20(storage, &sent)?;
+                self.sub_available_cw20(storage, &sent)?;
                 task.total_deposit.sub_cw20_coin(&sent)?;
             };
             if task.with_queries() {
@@ -171,13 +171,13 @@ impl<'a> CwCroncat<'a> {
         Ok(task)
     }
 
-    pub(crate) fn sub_availible_native(
+    pub(crate) fn sub_available_native(
         &self,
         storage: &mut dyn Storage,
         coin: &Coin,
     ) -> Result<Uint128, ContractError> {
         let new_bal = self
-            .availible_native_balance
+            .available_native_balance
             .update(storage, &coin.denom, |bal| {
                 bal.unwrap_or_default()
                     .checked_sub(coin.amount)
@@ -186,7 +186,7 @@ impl<'a> CwCroncat<'a> {
         Ok(new_bal)
     }
 
-    pub(crate) fn sub_availible_cw20(
+    pub(crate) fn sub_available_cw20(
         &self,
         storage: &mut dyn Storage,
         cw20: &Cw20CoinVerified,
@@ -201,13 +201,13 @@ impl<'a> CwCroncat<'a> {
         Ok(new_bal)
     }
 
-    pub(crate) fn add_availible_native(
+    pub(crate) fn add_available_native(
         &self,
         storage: &mut dyn Storage,
         coin: &Coin,
     ) -> Result<Uint128, ContractError> {
         let new_bal = self
-            .availible_native_balance
+            .available_native_balance
             .update(storage, &coin.denom, |bal| {
                 bal.unwrap_or_default()
                     .checked_add(coin.amount)
@@ -216,7 +216,7 @@ impl<'a> CwCroncat<'a> {
         Ok(new_bal)
     }
 
-    pub(crate) fn add_availible_cw20(
+    pub(crate) fn add_available_cw20(
         &self,
         storage: &mut dyn Storage,
         cw20: &Cw20CoinVerified,

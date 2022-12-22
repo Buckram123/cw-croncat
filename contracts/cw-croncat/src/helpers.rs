@@ -236,17 +236,13 @@ impl<'a> CwCroncat<'a> {
         storage: &mut dyn Storage,
         agent_addr: &Addr,
         coin: &Coin,
-    ) -> StdResult<Coin> {
+    ) -> StdResult<Uint128> {
         let new_bal = self.agent_balances_native.update(
             storage,
             (agent_addr, &coin.denom),
-            |bal| -> StdResult<Coin> {
-                let mut bal = bal.unwrap_or(Coin {
-                    denom: coin.denom.clone(),
-                    amount: Default::default(),
-                });
-                bal.amount = bal.amount.checked_add(coin.amount)?;
-                Ok(bal)
+            |bal| -> StdResult<Uint128> {
+                let bal = bal.unwrap_or_default();
+                Ok(bal.checked_add(coin.amount)?)
             },
         )?;
         Ok(new_bal)
@@ -257,17 +253,13 @@ impl<'a> CwCroncat<'a> {
         storage: &mut dyn Storage,
         user_addr: &Addr,
         cw20: &Cw20CoinVerified,
-    ) -> StdResult<Cw20CoinVerified> {
+    ) -> StdResult<Uint128> {
         let new_bal = self.users_balances_cw20.update(
             storage,
             (user_addr, &cw20.address),
-            |bal| -> StdResult<Cw20CoinVerified> {
-                let mut bal = bal.unwrap_or(Cw20CoinVerified {
-                    address: cw20.address.clone(),
-                    amount: Default::default(),
-                });
-                bal.amount = bal.amount.checked_add(cw20.amount)?;
-                Ok(bal)
+            |bal| -> StdResult<Uint128> {
+                let bal = bal.unwrap_or_default();
+                Ok(bal.checked_add(cw20.amount)?)
             },
         )?;
         Ok(new_bal)
@@ -278,7 +270,7 @@ impl<'a> CwCroncat<'a> {
         storage: &mut dyn Storage,
         user_addr: &Addr,
         cw20: &Cw20CoinVerified,
-    ) -> Result<Cw20CoinVerified, ContractError> {
+    ) -> Result<Uint128, ContractError> {
         let current_balance = self
             .users_balances_cw20
             .may_load(storage, (user_addr, &cw20.address))?;
@@ -287,11 +279,10 @@ impl<'a> CwCroncat<'a> {
         } else {
             return Err(ContractError::EmptyBalance {});
         };
-        new_bal.amount = new_bal
-            .amount
+        new_bal = new_bal
             .checked_sub(cw20.amount)
             .map_err(StdError::overflow)?;
-        if new_bal.amount.is_zero() {
+        if new_bal.is_zero() {
             self.users_balances_cw20
                 .remove(storage, (user_addr, &cw20.address));
         } else {
@@ -315,14 +306,14 @@ impl<'a> CwCroncat<'a> {
         let mut messages = Vec::with_capacity(cw20_keys.len() + 1);
 
         for native_key in native_keys {
-            let old = self
+            let old_amount = self
                 .agent_balances_native
                 .load(storage, (agent_addr, &native_key))?;
 
             self.agent_balances_native
                 .remove(storage, (agent_addr, &native_key));
-            if !old.amount.is_zero() {
-                native_coins.push(coin(old.amount.u128(), &old.denom));
+            if !old_amount.is_zero() {
+                native_coins.push(coin(old_amount.u128(), native_key));
             }
         }
         if !native_coins.is_empty() {
@@ -333,14 +324,14 @@ impl<'a> CwCroncat<'a> {
         }
 
         for cw20_key in cw20_keys {
-            let old = self
+            let old_amount = self
                 .agent_balances_cw20
                 .load(storage, (agent_addr, &cw20_key))?;
             self.agent_balances_cw20
                 .remove(storage, (agent_addr, &cw20_key));
             cw20_coins.push(Cw20CoinVerified {
-                address: old.address,
-                amount: old.amount,
+                address: cw20_key,
+                amount: old_amount,
             });
         }
 

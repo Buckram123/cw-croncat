@@ -79,11 +79,6 @@ fn everything_can_be_de_serialized() {
             address: Addr::unchecked("bob"),
             amount: Uint128::new(5),
         }],
-        staked_native_balance: vec![coin(5, "bob")],
-        staked_cw20_balance: vec![Cw20CoinVerified {
-            address: Addr::unchecked("bob"),
-            amount: Uint128::new(5),
-        }],
         cw20_whitelist: vec![Addr::unchecked("bob")],
     }
     .into();

@@ -207,8 +207,6 @@ pub struct GetBalancesResponse {
     pub native_denom: String,
     pub available_native_balance: Vec<Coin>,
     pub available_cw20_balance: Vec<Cw20CoinVerified>,
-    pub staked_native_balance: Vec<Coin>,
-    pub staked_cw20_balance: Vec<Cw20CoinVerified>,
     pub cw20_whitelist: Vec<Addr>,
 }
 

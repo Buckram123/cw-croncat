@@ -1,7 +1,6 @@
 use crate::{balancer::RoundRobinBalancer, ContractError};
-use cosmwasm_std::{Addr, Coin, Deps, StdResult, Storage, Timestamp, Uint128};
+use cosmwasm_std::{Addr, Deps, StdResult, Storage, Timestamp, Uint128};
 use cw2::ContractVersion;
-use cw20::Cw20CoinVerified;
 use cw_storage_plus::{Deque, Index, IndexList, IndexedMap, Item, Map, MultiIndex};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -142,24 +141,13 @@ pub struct CwCroncat<'a> {
     /// Value: Amount
     pub available_cw20_balance: Map<'a, &'a Addr, Uint128>,
 
-    // surplus that is temporary staking (to be used in conjunction with external treasury)
-    /// Staked native amounts by the contract
-    /// Key: Denom
-    /// Value: Amount
-    pub staked_native_balance: Map<'a, &'a str, Uint128>,
-
-    /// Staked cw20 amounts by the contract
-    /// Key: Cw20 Addr
-    /// Value: Amount
-    pub staked_cw20_balance: Map<'a, &'a Addr, Uint128>,
-
     // Accrued Agent reward balance
-    pub agent_balances_native: Map<'a, (&'a Addr, &'a str), Coin>,
+    pub agent_balances_native: Map<'a, (&'a Addr, &'a str), Uint128>,
 
-    pub agent_balances_cw20: Map<'a, (&'a Addr, &'a Addr), Cw20CoinVerified>,
+    pub agent_balances_cw20: Map<'a, (&'a Addr, &'a Addr), Uint128>,
 
     pub balancer: RoundRobinBalancer,
-    pub users_balances_cw20: Map<'a, (&'a Addr, &'a Addr), Cw20CoinVerified>,
+    pub users_balances_cw20: Map<'a, (&'a Addr, &'a Addr), Uint128>,
 }
 
 impl Default for CwCroncat<'static> {
@@ -208,8 +196,6 @@ impl<'a> CwCroncat<'a> {
             agent_nomination_begin_time: Item::new("agent_nomination_begin_time"),
             availible_native_balance: Map::new("availible_native_balance"),
             available_cw20_balance: Map::new("availible_cw20_balance"),
-            staked_native_balance: Map::new("staked_native_balance"),
-            staked_cw20_balance: Map::new("staked_cw20_balance"),
             agent_balances_native: Map::new("agent_balances_native"),
             agent_balances_cw20: Map::new("agent_balances_cw20"),
             balancer: RoundRobinBalancer::default(),

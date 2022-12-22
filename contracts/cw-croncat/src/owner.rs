@@ -3,7 +3,7 @@ use crate::error::ContractError;
 use crate::state::{Config, CwCroncat};
 use cosmwasm_std::{
     has_coins, to_binary, Addr, BankMsg, Coin, Deps, DepsMut, Env, MessageInfo, Order, Response,
-    StdResult, SubMsg, Uint64, WasmMsg,
+    StdResult, SubMsg, Uint128, Uint64, WasmMsg,
 };
 use cw20::{Balance, Cw20CoinVerified, Cw20ExecuteMsg};
 use cw_croncat_core::msg::{
@@ -69,35 +69,11 @@ impl<'a> CwCroncat<'a> {
             })
             .collect::<StdResult<Vec<Cw20CoinVerified>>>()?;
 
-        let staked_native_balance = self
-            .staked_native_balance
-            .range(deps.storage, None, None, Order::Ascending)
-            .skip(from_index as usize)
-            .take(limit as usize)
-            .map(|res| match res {
-                Ok((denom, amount)) => Ok(Coin { denom, amount }),
-                Err(err) => Err(err),
-            })
-            .collect::<StdResult<Vec<Coin>>>()?;
-
-        let staked_cw20_balance = self
-            .staked_cw20_balance
-            .range(deps.storage, None, None, Order::Ascending)
-            .skip(from_index as usize)
-            .take(limit as usize)
-            .map(|res| match res {
-                Ok((address, amount)) => Ok(Cw20CoinVerified { address, amount }),
-                Err(err) => Err(err),
-            })
-            .collect::<StdResult<Vec<Cw20CoinVerified>>>()?;
-
         Ok(GetBalancesResponse {
             native_denom: c.native_denom,
             available_native_balance,
             available_cw20_balance,
 
-            staked_native_balance,
-            staked_cw20_balance,
             cw20_whitelist: c.cw20_whitelist,
         })
     }
@@ -122,12 +98,12 @@ impl<'a> CwCroncat<'a> {
             .range(deps.storage, None, None, Order::Ascending)
             .skip(from_index as usize)
             .take(limit as usize)
-            .collect::<StdResult<Vec<(Addr, Cw20CoinVerified)>>>()?;
+            .collect::<StdResult<Vec<(Addr, Uint128)>>>()?;
         let cw20_balances = balances
             .into_iter()
-            .map(|(_, cw20_by_owner)| Cw20CoinVerified {
-                address: cw20_by_owner.address,
-                amount: cw20_by_owner.amount,
+            .map(|(cw20_addr, amount)| Cw20CoinVerified {
+                address: cw20_addr,
+                amount,
             })
             .collect();
         Ok(GetWalletBalancesResponse { cw20_balances })

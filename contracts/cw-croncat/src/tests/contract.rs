@@ -12,9 +12,8 @@ use cosmwasm_std::testing::{
     mock_dependencies_with_balance, mock_env, mock_info, MOCK_CONTRACT_ADDR,
 };
 use cosmwasm_std::{coins, from_binary, Addr, Binary, Event, Reply, SubMsgResponse, SubMsgResult};
-use cw_croncat_core::msg::{GetConfigResponse, QueryMsg};
+use cw_croncat_core::msg::{Config, QueryMsg};
 use cw_croncat_core::types::GasPrice;
-use cw_croncat_core::types::SlotType;
 
 #[test]
 fn configure() {
@@ -44,15 +43,11 @@ fn configure() {
     let res = store
         .query(deps.as_ref(), mock_env(), QueryMsg::GetConfig {})
         .unwrap();
-    let value: GetConfigResponse = from_binary(&res).unwrap();
+    let value: Config = from_binary(&res).unwrap();
     assert_eq!(false, value.paused);
     assert_eq!(info.sender, value.owner_id);
     // assert_eq!(None, value.treasury_id);
     assert_eq!(3, value.min_tasks_per_agent);
-    assert_eq!(
-        vec![(SlotType::Block, 0, 0), (SlotType::Cron, 0, 0)],
-        value.agent_active_indices
-    );
     assert_eq!(600, value.agents_eject_threshold);
     assert_eq!("atom", value.native_denom);
     assert_eq!(5, value.agent_fee);

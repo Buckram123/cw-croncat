@@ -6,53 +6,11 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::helpers::Task;
+pub use cw_croncat_core::msg::Config;
 use cw_croncat_core::{
     query::CroncatQuerier,
-    types::{Agent, GasPrice, SlotType},
+    types::{Agent, SlotType},
 };
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct Config {
-    // Runtime
-    pub paused: bool,
-    pub owner_id: Addr,
-
-    // Agent management
-    // The minimum number of tasks per agent
-    // Example: 10
-    // Explanation: For every 1 agent, 10 tasks per slot are available.
-    // NOTE: Caveat, when there are odd number of tasks or agents, the overflow will be available to first-come, first-serve. This doesn't negate the possibility of a failed txn from race case choosing winner inside a block.
-    // NOTE: The overflow will be adjusted to be handled by sweeper in next implementation.
-    pub min_tasks_per_agent: u64,
-    pub agent_active_indices: Vec<(SlotType, u32, u32)>,
-    // How many slots an agent can miss before being removed from the active queue
-    pub agents_eject_threshold: u64,
-    // The duration a prospective agent has to nominate themselves.
-    // When a task is created such that a new agent can join,
-    // The agent at the zeroth index of the pending agent queue has this time to nominate
-    // The agent at the first index has twice this time to nominate (which would remove the former agent from the pending queue)
-    // Value is in seconds
-    pub agent_nomination_duration: u16,
-    pub cw_rules_addr: Addr,
-
-    // Economics
-    pub agent_fee: u64,
-    pub gas_price: GasPrice,
-    pub gas_base_fee: u64,
-    pub gas_action_fee: u64,
-    pub gas_query_fee: u64,
-    pub gas_wasm_query_fee: u64,
-    pub proxy_callback_gas: u32,
-    pub slot_granularity_time: u64,
-
-    // Treasury
-    // pub treasury_id: Option<Addr>,
-    pub cw20_whitelist: Vec<Addr>, // TODO: Consider fee structure for whitelisted CW20s
-    pub native_denom: String,
-
-    // The default amount of tasks to query
-    pub limit: u64,
-}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct QueueItem {
@@ -105,6 +63,7 @@ pub struct CwCroncat<'a> {
     // TODO: Assess if diff store structure is needed for these:
     pub agent_active_queue: Item<'a, Vec<Addr>>,
     pub agent_pending_queue: Deque<'a, Addr>,
+    pub agent_active_indices: Item<'a, Vec<(SlotType, u32, u32)>>,
 
     // REF: https://github.com/CosmWasm/cw-plus/tree/main/packages/storage-plus#indexedmap
     pub tasks: IndexedMap<'a, &'a [u8], Task, TaskIndexes<'a>>,
@@ -185,6 +144,7 @@ impl<'a> CwCroncat<'a> {
             agents: Map::new("agents"),
             agent_active_queue: Item::new("agent_active_queue"),
             agent_pending_queue: Deque::new("agent_pending_queue"),
+            agent_active_indices: Item::new("agent_active_indices"),
             tasks: IndexedMap::new(tasks_key, indexes),
             task_total: Item::new("task_total"),
             tasks_with_queries: IndexedMap::new(tasks_with_queries_key, indexes_queries),

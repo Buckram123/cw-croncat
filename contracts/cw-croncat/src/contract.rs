@@ -51,7 +51,6 @@ impl<'a> CwCroncat<'a> {
             owner_id,
             // treasury_id: None,
             min_tasks_per_agent: 3,
-            agent_active_indices: vec![(SlotType::Block, 0, 0), (SlotType::Cron, 0, 0)],
             agents_eject_threshold: 600, // how many slots an agent can miss before being ejected. 10 * 60 = 1hr
             agent_fee: 5,
             gas_price: msg.gas_price.unwrap_or(GasPrice {
@@ -86,6 +85,10 @@ impl<'a> CwCroncat<'a> {
         self.reply_index.save(deps.storage, &Default::default())?;
         self.agent_nomination_begin_time.save(deps.storage, &None)?;
         self.tasks_with_queries_total.save(deps.storage, &0)?;
+        self.agent_active_indices.save(
+            deps.storage,
+            &vec![(SlotType::Block, 0, 0), (SlotType::Cron, 0, 0)],
+        )?;
 
         // keep tally of balances initialized
         for coin in info.funds {
@@ -108,14 +111,6 @@ impl<'a> CwCroncat<'a> {
             .add_attribute(
                 "min_tasks_per_agent",
                 config.min_tasks_per_agent.to_string(),
-            )
-            .add_attribute(
-                "agent_active_indices",
-                config
-                    .agent_active_indices
-                    .iter()
-                    .map(|a| format!("{:?}.{}", a.0, a.1))
-                    .collect::<String>(),
             )
             .add_attribute(
                 "agents_eject_threshold",

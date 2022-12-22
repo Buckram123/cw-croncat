@@ -26,7 +26,7 @@
     "ConfigResponse": {
       "anyOf": [
         {
-          "$ref": "#/definitions/GetConfigResponse"
+          "$ref": "#/definitions/Config"
         },
         {
           "type": "null"
@@ -540,6 +540,106 @@
         }
       }
     },
+    "Config": {
+      "type": "object",
+      "required": [
+        "agent_fee",
+        "agent_nomination_duration",
+        "agents_eject_threshold",
+        "cw20_whitelist",
+        "cw_rules_addr",
+        "gas_action_fee",
+        "gas_base_fee",
+        "gas_price",
+        "gas_query_fee",
+        "gas_wasm_query_fee",
+        "limit",
+        "min_tasks_per_agent",
+        "native_denom",
+        "owner_id",
+        "paused",
+        "proxy_callback_gas",
+        "slot_granularity_time"
+      ],
+      "properties": {
+        "agent_fee": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "agent_nomination_duration": {
+          "type": "integer",
+          "format": "uint16",
+          "minimum": 0.0
+        },
+        "agents_eject_threshold": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "cw20_whitelist": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Addr"
+          }
+        },
+        "cw_rules_addr": {
+          "$ref": "#/definitions/Addr"
+        },
+        "gas_action_fee": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "gas_base_fee": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "gas_price": {
+          "$ref": "#/definitions/GasPrice"
+        },
+        "gas_query_fee": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "gas_wasm_query_fee": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "limit": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "min_tasks_per_agent": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "native_denom": {
+          "type": "string"
+        },
+        "owner_id": {
+          "$ref": "#/definitions/Addr"
+        },
+        "paused": {
+          "type": "boolean"
+        },
+        "proxy_callback_gas": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "slot_granularity_time": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        }
+      }
+    },
     "CosmosMsg_for_Empty": {
       "oneOf": [
         {
@@ -930,118 +1030,6 @@
         }
       }
     },
-    "GetConfigResponse": {
-      "type": "object",
-      "required": [
-        "agent_active_indices",
-        "agent_fee",
-        "agent_nomination_duration",
-        "agents_eject_threshold",
-        "cw20_whitelist",
-        "cw_rules_addr",
-        "gas_action_fee",
-        "gas_base_fee",
-        "gas_price",
-        "limit",
-        "min_tasks_per_agent",
-        "native_denom",
-        "owner_id",
-        "paused",
-        "proxy_callback_gas",
-        "slot_granularity_time"
-      ],
-      "properties": {
-        "agent_active_indices": {
-          "type": "array",
-          "items": {
-            "type": "array",
-            "items": [
-              {
-                "$ref": "#/definitions/SlotType"
-              },
-              {
-                "type": "integer",
-                "format": "uint32",
-                "minimum": 0.0
-              },
-              {
-                "type": "integer",
-                "format": "uint32",
-                "minimum": 0.0
-              }
-            ],
-            "maxItems": 3,
-            "minItems": 3
-          }
-        },
-        "agent_fee": {
-          "type": "integer",
-          "format": "uint64",
-          "minimum": 0.0
-        },
-        "agent_nomination_duration": {
-          "type": "integer",
-          "format": "uint16",
-          "minimum": 0.0
-        },
-        "agents_eject_threshold": {
-          "type": "integer",
-          "format": "uint64",
-          "minimum": 0.0
-        },
-        "cw20_whitelist": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/Addr"
-          }
-        },
-        "cw_rules_addr": {
-          "$ref": "#/definitions/Addr"
-        },
-        "gas_action_fee": {
-          "type": "integer",
-          "format": "uint64",
-          "minimum": 0.0
-        },
-        "gas_base_fee": {
-          "type": "integer",
-          "format": "uint64",
-          "minimum": 0.0
-        },
-        "gas_price": {
-          "$ref": "#/definitions/GasPrice"
-        },
-        "limit": {
-          "type": "integer",
-          "format": "uint64",
-          "minimum": 0.0
-        },
-        "min_tasks_per_agent": {
-          "type": "integer",
-          "format": "uint64",
-          "minimum": 0.0
-        },
-        "native_denom": {
-          "type": "string"
-        },
-        "owner_id": {
-          "$ref": "#/definitions/Addr"
-        },
-        "paused": {
-          "type": "boolean"
-        },
-        "proxy_callback_gas": {
-          "type": "integer",
-          "format": "uint32",
-          "minimum": 0.0
-        },
-        "slot_granularity_time": {
-          "type": "integer",
-          "format": "uint64",
-          "minimum": 0.0
-        }
-      }
-    },
     "GetSlotHashesResponse": {
       "type": "object",
       "required": [
@@ -1371,13 +1359,6 @@
       "items": {
         "$ref": "#/definitions/ValueIndex"
       }
-    },
-    "SlotType": {
-      "type": "string",
-      "enum": [
-        "Block",
-        "Cron"
-      ]
     },
     "SmartQueries": {
       "type": "array",

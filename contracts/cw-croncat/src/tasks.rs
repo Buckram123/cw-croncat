@@ -1,6 +1,7 @@
 use crate::error::ContractError;
 use crate::slots::Interval;
-use crate::state::{Config, CwCroncat};
+use crate::state::Config;
+use crate::state::CwCroncat;
 use cosmwasm_std::{coin, Storage};
 use cosmwasm_std::{
     to_binary, BankMsg, Deps, DepsMut, Env, MessageInfo, Order, Response, StdResult, SubMsg,

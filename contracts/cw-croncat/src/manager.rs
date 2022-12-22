@@ -63,7 +63,7 @@ impl<'a> CwCroncat<'a> {
             .get_agent_tasks(
                 &deps.as_ref(),
                 &env,
-                &self.config,
+                &self.agent_active_indices,
                 &self.agent_active_queue,
                 info.sender.clone(),
                 slot,
@@ -493,7 +493,7 @@ impl<'a> CwCroncat<'a> {
         self.balancer.on_task_completed(
             storage,
             &env,
-            &self.config,
+            &self.agent_active_indices,
             &self.agent_active_queue,
             task_info,
         )?;

@@ -12,7 +12,7 @@ use cw_croncat_core::msg::{
 };
 use cw_croncat_core::traits::Intervals;
 use cw_croncat_core::types::{
-    calculate_required_amount, BoundaryValidated, SlotType, Task, TaskBalance,
+    gas_amount_with_agent_fee, BoundaryValidated, SlotType, Task, TaskBalance,
 };
 
 impl<'a> CwCroncat<'a> {
@@ -248,9 +248,11 @@ impl<'a> CwCroncat<'a> {
             &cfg.owner_id,
             cfg.gas_base_fee,
             cfg.gas_action_fee,
+            cfg.gas_query_fee,
+            cfg.gas_wasm_query_fee,
         )?;
-        let gas_price = calculate_required_amount(gas_amount, cfg.agent_fee)?;
-        let price = cfg.gas_fraction.calculate(gas_price, 1)?;
+        let gas_amount_with_agent_fee = gas_amount_with_agent_fee(gas_amount, cfg.agent_fee)?;
+        let price = cfg.gas_price.calculate(gas_amount_with_agent_fee)?;
         amount_for_one_task.add_native_coin(&coin(price, &cfg.native_denom))?;
 
         //ToDo: Change this method as env.contract.address does not exist in testing env
@@ -375,8 +377,6 @@ impl<'a> CwCroncat<'a> {
                     None => Ok(vec![hash]),
                 }
             };
-
-            // Based on slot kind, put into block or cron slots
             match slot_kind {
                 SlotType::Block => {
                     self.block_slots

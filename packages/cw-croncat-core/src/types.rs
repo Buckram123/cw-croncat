@@ -18,12 +18,6 @@ use crate::{
     traits::{Intervals, ResultFailed},
 };
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]
-pub struct GenericBalance {
-    pub native: Vec<Coin>,
-    pub cw20: Vec<Cw20CoinVerified>,
-}
-
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub enum AgentStatus {
     // Default for any new agent, if tasks ratio allows
@@ -98,30 +92,38 @@ pub enum Boundary {
 pub struct BoundaryValidated {
     pub start: Option<u64>,
     pub end: Option<u64>,
+    pub is_block_boundary: Option<bool>,
 }
 
 impl BoundaryValidated {
+    pub fn is_block_boundary(&self) -> bool {
+        self.is_block_boundary.is_some() && self.is_block_boundary.unwrap()
+    }
     pub fn validate_boundary(
         boundary: Option<Boundary>,
         interval: &Interval,
     ) -> Result<Self, CoreError> {
         if let Some(boundary) = boundary {
             match (interval, boundary) {
-                (Interval::Cron(_), Boundary::Time { start, end }) => match (start, end) {
-                    (Some(s), Some(e)) => {
-                        if s.nanos() >= e.nanos() {
-                            return Err(CoreError::InvalidBoundary {});
+                (Interval::Once | Interval::Cron(_), Boundary::Time { start, end }) => {
+                    match (start, end) {
+                        (Some(s), Some(e)) => {
+                            if s.nanos() >= e.nanos() {
+                                return Err(CoreError::InvalidBoundary {});
+                            }
+                            Ok(Self {
+                                start: Some(s.nanos()),
+                                end: Some(e.nanos()),
+                                is_block_boundary: Some(false),
+                            })
                         }
-                        Ok(Self {
-                            start: Some(s.nanos()),
-                            end: Some(e.nanos()),
-                        })
+                        _ => Ok(Self {
+                            start: start.map(|start| start.nanos()),
+                            end: end.map(|end| end.nanos()),
+                            is_block_boundary: Some(false),
+                        }),
                     }
-                    _ => Ok(Self {
-                        start: start.map(|start| start.nanos()),
-                        end: end.map(|end| end.nanos()),
-                    }),
-                },
+                }
                 (
                     Interval::Once | Interval::Immediate | Interval::Block(_),
                     Boundary::Height { start, end },
@@ -133,11 +135,13 @@ impl BoundaryValidated {
                         Ok(Self {
                             start: Some(s.u64()),
                             end: Some(e.u64()),
+                            is_block_boundary: Some(true),
                         })
                     }
                     _ => Ok(Self {
                         start: start.map(Into::into),
                         end: end.map(Into::into),
+                        is_block_boundary: Some(true),
                     }),
                 },
                 _ => Err(CoreError::InvalidBoundary {}),
@@ -146,6 +150,7 @@ impl BoundaryValidated {
             Ok(Self {
                 start: None,
                 end: None,
+                is_block_boundary: Some(true), //Boundary isnt provided, so default is block
             })
         }
     }
@@ -223,6 +228,8 @@ impl TaskRequest {
     /// Validate the task actions only use the supported messages
     /// We're iterating over all actions
     /// so it's a great place for calculaing balance usages
+    // Consider moving Config to teh cw-croncat-core so this method can take reference of that
+    #[allow(clippy::too_many_arguments)]
     pub fn is_valid_msg_calculate_usage(
         &self,
         api: &dyn Api,
@@ -231,10 +238,15 @@ impl TaskRequest {
         owner_id: &Addr,
         base_gas: u64,
         action_gas: u64,
+        query_gas: u64,
+        wasm_query_gas: u64,
     ) -> Result<(TaskBalance, u64), CoreError> {
         let mut gas_amount: u64 = base_gas;
         let mut amount_for_one_task = TaskBalance::default();
 
+        if self.actions.is_empty() {
+            return Err(CoreError::InvalidAction {});
+        }
         for action in self.actions.iter() {
             // checked for cases, where task creator intentionaly tries to overflow
             gas_amount = gas_amount
@@ -316,6 +328,27 @@ impl TaskRequest {
                 }
                 // TODO: Check authZ messages
                 _ => (),
+            }
+        }
+
+        if let Some(queries) = self.queries.as_ref() {
+            // If task has queries - Rules contract is queried which is wasm query
+            gas_amount = gas_amount
+                .checked_add(wasm_query_gas)
+                .ok_or(CoreError::InvalidWasmMsg {})?;
+            for query in queries.iter() {
+                match query {
+                    CroncatQuery::HasBalanceGte(_) => {
+                        gas_amount = gas_amount
+                            .checked_add(query_gas)
+                            .ok_or(CoreError::InvalidWasmMsg {})?;
+                    }
+                    _ => {
+                        gas_amount = gas_amount
+                            .checked_add(wasm_query_gas)
+                            .ok_or(CoreError::InvalidWasmMsg {})?;
+                    }
+                }
             }
         }
         Ok((amount_for_one_task, gas_amount))
@@ -444,8 +477,13 @@ impl Task {
     /// Get the hash of a task based on parameters
     pub fn to_hash(&self) -> String {
         let message = format!(
-            "{:?}{:?}{:?}{:?}{:?}",
-            self.owner_id, self.interval, self.boundary, self.actions, self.queries
+            "{:?}{:?}{:?}{:?}{:?}{:?}",
+            self.owner_id,
+            self.interval,
+            self.boundary,
+            self.actions,
+            self.queries,
+            self.transforms
         );
 
         let hash = Sha256::digest(message.as_bytes());
@@ -519,6 +557,8 @@ impl Task {
         &self,
         base_gas: u64,
         action_gas: u64,
+        query_gas: u64,
+        wasm_query_gas: u64,
         next_idx: u64,
     ) -> Result<(Vec<SubMsg<Empty>>, u64), CoreError> {
         let mut gas: u64 = base_gas;
@@ -532,6 +572,25 @@ impl Task {
                 sub_msgs.push(sub_msg.with_gas_limit(gas_limit));
             } else {
                 sub_msgs.push(sub_msg);
+            }
+        }
+
+        if let Some(queries) = self.queries.as_ref() {
+            // If task has queries - Rules contract is queried which is wasm query
+            gas = gas
+                .checked_add(wasm_query_gas)
+                .ok_or(CoreError::InvalidGas {})?;
+            for query in queries.iter() {
+                match query {
+                    CroncatQuery::HasBalanceGte(_) => {
+                        gas = gas.checked_add(query_gas).ok_or(CoreError::InvalidGas {})?;
+                    }
+                    _ => {
+                        gas = gas
+                            .checked_add(wasm_query_gas)
+                            .ok_or(CoreError::InvalidGas {})?;
+                    }
+                }
             }
         }
         Ok((sub_msgs, gas))
@@ -685,12 +744,12 @@ impl Task {
     }
 }
 
-/// Calculate the amount including agent_fee
-pub fn calculate_required_amount(amount: u64, agent_fee: u64) -> Result<u64, CoreError> {
-    amount
+/// Calculate the gas amount including agent_fee
+pub fn gas_amount_with_agent_fee(gas_amount: u64, agent_fee: u64) -> Result<u64, CoreError> {
+    gas_amount
         .checked_mul(agent_fee)
         .and_then(|n| n.checked_div(100))
-        .and_then(|n| n.checked_add(amount))
+        .and_then(|n| n.checked_add(gas_amount))
         .ok_or(CoreError::InvalidGas {})
 }
 
@@ -817,7 +876,13 @@ impl Intervals for Interval {
         match self {
             // If Once, return the first block within a specific range that can be triggered 1 time.
             // If Immediate, return the first block within a specific range that can be triggered immediately, potentially multiple times.
-            Interval::Once | Interval::Immediate => get_next_block_limited(env, boundary),
+            Interval::Once | Interval::Immediate => {
+                if boundary.is_block_boundary() {
+                    get_next_block_limited(env, boundary)
+                } else {
+                    get_next_cron_time(env, boundary, "0 0 * * * *", slot_granularity_time)
+                }
+            }
             // return the first block within a specific range that can be triggered 1 or more times based on timestamps.
             // Uses crontab spec
             Interval::Cron(crontab) => {
@@ -846,26 +911,30 @@ impl Intervals for Interval {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-pub struct GasFraction {
+pub struct GasPrice {
     pub numerator: u64,
     pub denominator: u64,
+    /// Note
+    pub gas_adjustment_numerator: u64,
 }
 
-impl GasFraction {
+impl GasPrice {
     pub fn is_valid(&self) -> bool {
-        self.denominator != 0 && self.numerator != 0
+        self.denominator != 0 && self.numerator != 0 && self.gas_adjustment_numerator != 0
     }
 
-    pub fn calculate(&self, extra_num: u64, extra_denom: u64) -> Result<u128, CoreError> {
-        let numerator = self
-            .numerator
-            .checked_mul(extra_num)
+    pub fn calculate(&self, gas_amount: u64) -> Result<u128, CoreError> {
+        let gas_adjusted = gas_amount
+            .checked_mul(self.gas_adjustment_numerator)
+            .and_then(|g| g.checked_div(self.denominator))
             .ok_or(CoreError::InvalidGas {})?;
-        let denominator = self
-            .denominator
-            .checked_mul(extra_denom)
+
+        let price = gas_adjusted
+            .checked_mul(self.numerator)
+            .and_then(|g| g.checked_div(self.denominator))
             .ok_or(CoreError::InvalidGas {})?;
-        Ok((numerator / denominator) as u128)
+
+        Ok(price as u128)
     }
 }
 

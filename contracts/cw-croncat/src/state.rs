@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use crate::helpers::Task;
 use cw_croncat_core::{
     query::CroncatQuerier,
-    types::{Agent, GasFraction, SlotType},
+    types::{Agent, GasPrice, SlotType},
 };
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -37,9 +37,11 @@ pub struct Config {
 
     // Economics
     pub agent_fee: u64,
-    pub gas_fraction: GasFraction,
+    pub gas_price: GasPrice,
     pub gas_base_fee: u64,
     pub gas_action_fee: u64,
+    pub gas_query_fee: u64,
+    pub gas_wasm_query_fee: u64,
     pub proxy_callback_gas: u32,
     pub slot_granularity_time: u64,
 

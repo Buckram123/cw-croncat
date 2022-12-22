@@ -469,6 +469,12 @@
           "format": "uint64",
           "minimum": 0.0
         },
+        "is_block_boundary": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
         "start": {
           "type": [
             "integer",
@@ -818,14 +824,21 @@
       "description": "An empty struct that serves as a placeholder in different places, such as contracts that don't set a custom message.\n\nIt is designed to be expressable in correct JSON and JSON Schema but contains no meaningful data. Previously we used enums without cases, but those cannot represented as valid JSON Schema (https://github.com/CosmWasm/cosmwasm/issues/451)",
       "type": "object"
     },
-    "GasFraction": {
+    "GasPrice": {
       "type": "object",
       "required": [
         "denominator",
+        "gas_adjustment_numerator",
         "numerator"
       ],
       "properties": {
         "denominator": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "gas_adjustment_numerator": {
+          "description": "Note",
           "type": "integer",
           "format": "uint64",
           "minimum": 0.0
@@ -891,9 +904,7 @@
         "available_cw20_balance",
         "available_native_balance",
         "cw20_whitelist",
-        "native_denom",
-        "staked_cw20_balance",
-        "staked_native_balance"
+        "native_denom"
       ],
       "properties": {
         "available_cw20_balance": {
@@ -916,18 +927,6 @@
         },
         "native_denom": {
           "type": "string"
-        },
-        "staked_cw20_balance": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/Cw20CoinVerified"
-          }
-        },
-        "staked_native_balance": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/Coin"
-          }
         }
       }
     },
@@ -942,7 +941,7 @@
         "cw_rules_addr",
         "gas_action_fee",
         "gas_base_fee",
-        "gas_fraction",
+        "gas_price",
         "limit",
         "min_tasks_per_agent",
         "native_denom",
@@ -1009,8 +1008,8 @@
           "format": "uint64",
           "minimum": 0.0
         },
-        "gas_fraction": {
-          "$ref": "#/definitions/GasFraction"
+        "gas_price": {
+          "$ref": "#/definitions/GasPrice"
         },
         "limit": {
           "type": "integer",

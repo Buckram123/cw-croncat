@@ -1,6 +1,6 @@
 use cosmwasm_std::{
-    Addr, Api, BankMsg, Binary, Coin, CosmosMsg, Empty, Env, GovMsg, IbcMsg, StakingMsg, StdError,
-    StdResult, SubMsg, SubMsgResult, Timestamp, Uint128, Uint64, WasmMsg,
+    Addr, Api, BankMsg, Binary, Coin, CosmosMsg, Empty, Env, GovMsg, IbcMsg, StdError, StdResult,
+    SubMsg, SubMsgResult, Timestamp, Uint128, Uint64, WasmMsg,
 };
 use cron_schedule::Schedule;
 use cw20::{Cw20CoinVerified, Cw20ExecuteMsg};
@@ -248,7 +248,7 @@ impl TaskRequest {
             return Err(CoreError::InvalidAction {});
         }
         for action in self.actions.iter() {
-            // checked for cases, where task creator intentionaly tries to overflow
+            // checked for cases, where task creator intentionally tries to overflow
             gas_amount = gas_amount
                 .checked_add(action.gas_limit.unwrap_or(action_gas))
                 .ok_or(CoreError::InvalidWasmMsg {})?;
@@ -286,16 +286,6 @@ impl TaskRequest {
                         }
                     }
                 }
-                CosmosMsg::Staking(StakingMsg::Delegate {
-                    validator: _,
-                    amount,
-                }) => {
-                    // Must attach enough balance for staking
-                    if amount.amount.is_zero() {
-                        return Err(CoreError::InvalidAction {});
-                    }
-                    amount_for_one_task.add_native_coin(amount)?;
-                }
                 // TODO: Allow send, as long as coverage of assets is correctly handled
                 CosmosMsg::Bank(BankMsg::Send {
                     to_address: _,
@@ -324,6 +314,9 @@ impl TaskRequest {
                 // TODO: Setup better support for IBC
                 CosmosMsg::Ibc(IbcMsg::Transfer { .. }) => {
                     // Restrict bank msg for time being, so contract doesnt get drained, however could allow an escrow type setup
+                    return Err(CoreError::InvalidAction {});
+                }
+                CosmosMsg::Staking(_) => {
                     return Err(CoreError::InvalidAction {});
                 }
                 // TODO: Check authZ messages

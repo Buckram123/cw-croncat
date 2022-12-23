@@ -9,7 +9,7 @@ use crate::tests::helpers::{
 };
 use crate::ContractError;
 use cosmwasm_std::{
-    coin, coins, to_binary, Addr, BankMsg, Coin, CosmosMsg, StakingMsg, StdResult, Uint128, WasmMsg,
+    coin, coins, to_binary, Addr, BankMsg, Coin, CosmosMsg, StdResult, Uint128, WasmMsg,
 };
 use cw20::Cw20Coin;
 use cw_croncat_core::error::CoreError;
@@ -33,10 +33,10 @@ fn proxy_call_fail_cases() -> StdResult<()> {
     let (mut app, cw_template_contract, _) = proper_instantiate();
     let contract_addr = cw_template_contract.addr();
     let proxy_call_msg = ExecuteMsg::ProxyCall { task_hash: None };
-    let validator = String::from("you");
-    let amount = coin(3, NATIVE_DENOM);
-    let stake = StakingMsg::Delegate { validator, amount };
-    let msg: CosmosMsg = stake.clone().into();
+    let to_address = String::from("you");
+    let amount = coins(3, NATIVE_DENOM);
+    let bank = BankMsg::Send { to_address, amount };
+    let msg: CosmosMsg = bank.clone().into();
 
     let create_task_msg = ExecuteMsg::CreateTask {
         task: TaskRequest {
@@ -516,17 +516,37 @@ fn proxy_call_no_task_and_withdraw() -> StdResult<()> {
 
 #[test]
 fn proxy_callback_fail_cases() -> StdResult<()> {
-    let (mut app, cw_template_contract, _) = proper_instantiate();
+    let (mut app, cw_template_contract, cw20_addr) = proper_instantiate();
     let contract_addr = cw_template_contract.addr();
     let proxy_call_msg = ExecuteMsg::ProxyCall { task_hash: None };
     let task_id_str =
-        "ed4e2f3e3bd72f982145b04fdc4ffca4a03df10bb95b8c7f807b4f06a5b98f91".to_string();
+        "7b1468db0337f1f0c3e8bf8dc6b3f7da03c6d951ba8ef86d0239e8e4ef11178c".to_string();
 
-    // Doing this msg since its the easiest to guarantee success in reply
-    let validator = String::from("you");
-    let amount = coin(3, NATIVE_DENOM);
-    let stake = StakingMsg::Delegate { validator, amount };
-    let msg: CosmosMsg = stake.clone().into();
+    // refill cw20
+    app.execute_contract(
+        Addr::unchecked(ANYONE),
+        cw20_addr.clone(),
+        &cw20_base::msg::ExecuteMsg::Send {
+            contract: contract_addr.to_string(),
+            amount: Uint128::new(10),
+            msg: Default::default(),
+        },
+        &[],
+    )
+    .unwrap();
+
+    let wasm = WasmMsg::Execute {
+        contract_addr: cw20_addr.to_string(),
+        msg: to_binary(&cw20_base::msg::ExecuteMsg::Send {
+            contract: cw20_addr.to_string(),
+            amount: Uint128::new(2),
+            msg: Default::default(),
+        })
+        .unwrap(),
+        funds: vec![],
+    };
+
+    let msg: CosmosMsg = wasm.clone().into();
 
     let create_task_msg = ExecuteMsg::CreateTask {
         task: TaskRequest {
@@ -542,14 +562,17 @@ fn proxy_callback_fail_cases() -> StdResult<()> {
             }],
             queries: None,
             transforms: None,
-            cw20_coin: None,
+            cw20_coin: Some(Cw20Coin {
+                address: cw20_addr.to_string(),
+                amount: Uint128::new(5),
+            }),
         },
     };
 
     // create a task
     let res = app
         .execute_contract(
-            Addr::unchecked(ADMIN),
+            Addr::unchecked(ANYONE),
             contract_addr.clone(),
             &create_task_msg,
             &coins(128338, NATIVE_DENOM),
@@ -644,11 +667,7 @@ fn proxy_callback_fail_cases() -> StdResult<()> {
     // let task_id_str =
     //     "ce7f88df7816b4cf2d0cd882f189eb81ad66e4a9aabfc1eb5ba2189d73f9929b".to_string();
 
-    // Doing this msg since its the easiest to guarantee success in reply
-    let validator = String::from("you");
-    let amount = coin(3, NATIVE_DENOM);
-    let stake = StakingMsg::Delegate { validator, amount };
-    let msg: CosmosMsg = stake.clone().into();
+    let msg: CosmosMsg = wasm.clone().into();
 
     let create_task_msg = ExecuteMsg::CreateTask {
         task: TaskRequest {
@@ -664,13 +683,16 @@ fn proxy_callback_fail_cases() -> StdResult<()> {
             }],
             queries: None,
             transforms: None,
-            cw20_coin: None,
+            cw20_coin: Some(Cw20Coin {
+                address: cw20_addr.to_string(),
+                amount: Uint128::new(5),
+            }),
         },
     };
 
     // create the task again
     app.execute_contract(
-        Addr::unchecked(ADMIN),
+        Addr::unchecked(ANYONE),
         contract_addr.clone(),
         &create_task_msg,
         &coins(525006, NATIVE_DENOM),
@@ -2256,10 +2278,9 @@ fn testing_fee_works() {
     let contract_addr = cw_template_contract.addr();
 
     let addr1 = String::from("addr1");
-    let amount = coins(3, NATIVE_DENOM);
     let send = BankMsg::Send {
         to_address: addr1.clone(),
-        amount: amount.clone(),
+        amount: coins(2, NATIVE_DENOM),
     };
     let bank_msg = ExecuteMsg::CreateTask {
         task: TaskRequest {
@@ -2275,9 +2296,9 @@ fn testing_fee_works() {
             cw20_coin: None,
         },
     };
-    let delegate = StakingMsg::Delegate {
-        validator: addr1,
-        amount: amount[0].clone(),
+    let delegate = BankMsg::Send {
+        to_address: addr1,
+        amount: coins(4, NATIVE_DENOM),
     };
     let delegate_msg = ExecuteMsg::CreateTask {
         task: TaskRequest {
@@ -3112,3 +3133,6 @@ fn empty_actions_not_allowed() {
         .unwrap();
     assert_eq!(res, ContractError::CoreError(CoreError::InvalidAction {}));
 }
+
+#[test]
+fn stake_msg_not_allowed() {}

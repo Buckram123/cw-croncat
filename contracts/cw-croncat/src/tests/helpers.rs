@@ -203,7 +203,7 @@ pub fn proper_instantiate() -> (App, CwTemplateContract, Addr) {
     let cw20_id = app.store_code(cw20_template());
     let msg = cw20_base::msg::InstantiateMsg {
         name: "test".to_string(),
-        symbol: "tset".to_string(),
+        symbol: "test".to_string(),
         decimals: 6,
         initial_balances: vec![Cw20Coin {
             address: ANYONE.to_string(),

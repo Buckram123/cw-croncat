@@ -79,11 +79,10 @@ all: lint build test schema gen optimize checksum
 
 gas-benchmark: juno-local download-deps optimize
 	#!/usr/bin/env bash
-	sleep 1
 	set -euxo pipefail
 	TXFLAG="--chain-id testing --gas-prices 0.025ujunox --gas auto --gas-adjustment 1.3 --broadcast-mode block"
 	docker cp 'artifacts/' cosmwasm:/artifacts
 	RULES_ID=$(docker exec -i cosmwasm junod tx wasm store "/artifacts/cw_rules.wasm" -y --from validator $TXFLAG --output json | jq -r '.logs[0].events[-1].attributes[-1].value')
 	CRONCAT_ID=$(docker exec -i cosmwasm junod tx wasm store "/artifacts/cw_croncat.wasm" -y --from validator $TXFLAG --output json | jq -r '.logs[0].events[-1].attributes[-1].value')
 	CW20_ID=$(docker exec -i cosmwasm junod tx wasm store "/artifacts/cw20_base.wasm" -y --from validator $TXFLAG --output json | jq -r '.logs[0].events[-1].attributes[-1].value')
-	CW20_ID=$CW20_ID CRONCAT_ID=$CRONCAT_ID RULES_ID=$RULES_ID VALIDATOR_ADDR=$(docker exec -i cosmwasm junod query staking validators --output json | jq -r '.validators[0].operator_address') RUST_LOG=info cargo run --bin gas-benchmark
+	CW20_ID=$CW20_ID CRONCAT_ID=$CRONCAT_ID RULES_ID=$RULES_ID RUST_LOG=info cargo run --bin gas-benchmark

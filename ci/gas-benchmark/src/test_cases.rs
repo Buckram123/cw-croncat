@@ -2,7 +2,7 @@ use cosm_orc::{
     config::{cfg::Coin, key::SigningKey},
     orchestrator::cosm_orc::CosmOrc,
 };
-use cosmwasm_std::{coin, coins, to_binary};
+use cosmwasm_std::{coins, to_binary};
 use cw20::Cw20Coin;
 use cw_croncat_core::{
     msg::TaskRequest,
@@ -188,94 +188,6 @@ pub(crate) fn send_cw20_to_bob_and_alice_recurring(cw20_addr: &str, times: u128)
             address: cw20_addr.to_owned(),
             amount: (times * amount).into(),
         }),
-    }
-}
-
-pub(crate) fn delegate_to_bob_recurring(denom: &str) -> TaskRequest {
-    TaskRequest {
-        interval: Interval::Immediate,
-        boundary: None,
-        stop_on_fail: false,
-        actions: vec![Action {
-            msg: cosmwasm_std::CosmosMsg::Staking(cosmwasm_std::StakingMsg::Delegate {
-                validator: BOB_ADDR.to_owned(),
-                amount: coin(1, denom),
-            }),
-            gas_limit: None,
-        }],
-        queries: None,
-        transforms: None,
-        cw20_coin: None,
-    }
-}
-
-pub(crate) fn delegate_to_bob_and_alice_recurring(denom: &str) -> TaskRequest {
-    let delegate_to_bob = Action {
-        msg: cosmwasm_std::CosmosMsg::Staking(cosmwasm_std::StakingMsg::Delegate {
-            validator: BOB_ADDR.to_owned(),
-            amount: coin(1, denom),
-        }),
-        gas_limit: None,
-    };
-    let delegate_to_alice = Action {
-        msg: cosmwasm_std::CosmosMsg::Staking(cosmwasm_std::StakingMsg::Delegate {
-            validator: ALICE_ADDR.to_owned(),
-            amount: coin(3, denom),
-        }),
-        gas_limit: None,
-    };
-    TaskRequest {
-        interval: Interval::Immediate,
-        boundary: None,
-        stop_on_fail: false,
-        actions: vec![delegate_to_bob, delegate_to_alice],
-        queries: None,
-        transforms: None,
-        cw20_coin: None,
-    }
-}
-
-pub(crate) fn delegate_to_validator(denom: &str) -> TaskRequest {
-    let validator = std::env::var("VALIDATOR_ADDR").unwrap();
-    let delegate_to_validator = Action {
-        msg: cosmwasm_std::StakingMsg::Delegate {
-            validator,
-            amount: coin(1, denom),
-        }
-        .into(),
-        gas_limit: None,
-    };
-
-    TaskRequest {
-        interval: Interval::Immediate,
-        boundary: None,
-        stop_on_fail: false,
-        actions: vec![delegate_to_validator],
-        queries: None,
-        transforms: None,
-        cw20_coin: None,
-    }
-}
-
-pub(crate) fn delegate_to_validator_twice(denom: &str) -> TaskRequest {
-    let validator = std::env::var("VALIDATOR_ADDR").unwrap();
-    let delegate_to_validator = Action {
-        msg: cosmwasm_std::StakingMsg::Delegate {
-            validator,
-            amount: coin(1, denom),
-        }
-        .into(),
-        gas_limit: None,
-    };
-
-    TaskRequest {
-        interval: Interval::Immediate,
-        boundary: None,
-        stop_on_fail: false,
-        actions: vec![delegate_to_validator.clone(), delegate_to_validator],
-        queries: None,
-        transforms: None,
-        cw20_coin: None,
     }
 }
 

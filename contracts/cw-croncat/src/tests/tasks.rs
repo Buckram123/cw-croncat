@@ -5,9 +5,7 @@ use crate::contract::{
 };
 use crate::tests::helpers::proper_instantiate;
 use crate::ContractError;
-use cosmwasm_std::{
-    coin, coins, to_binary, Addr, BankMsg, CosmosMsg, StakingMsg, StdResult, Uint128, WasmMsg,
-};
+use cosmwasm_std::{coins, to_binary, Addr, BankMsg, CosmosMsg, StdResult, Uint128, WasmMsg};
 use cw2::ContractVersion;
 use cw_croncat_core::error::CoreError;
 use cw_croncat_core::msg::{
@@ -99,10 +97,10 @@ fn query_get_tasks() {
     let (mut app, cw_template_contract, _) = proper_instantiate();
     let contract_addr = cw_template_contract.addr();
 
-    let validator = String::from("you");
-    let amount = coin(3, NATIVE_DENOM);
-    let stake = StakingMsg::Delegate { validator, amount };
-    let msg: CosmosMsg = stake.clone().into();
+    let to_address = String::from("you");
+    let amount = coins(3, NATIVE_DENOM);
+    let bank = BankMsg::Send { to_address, amount };
+    let msg: CosmosMsg = bank.clone().into();
 
     let create_task_msg = ExecuteMsg::CreateTask {
         task: TaskRequest {
@@ -158,7 +156,7 @@ fn query_get_tasks_pagination() {
     let (mut app, cw_template_contract, _) = proper_instantiate();
     let contract_addr = cw_template_contract.addr();
 
-    let validator = String::from("you");
+    let to_address = String::from("you");
     let tasks_amnt: u64 = 10;
     let from_index = 3;
     let limit = 2;
@@ -168,9 +166,9 @@ fn query_get_tasks_pagination() {
             boundary: None,
             stop_on_fail: false,
             actions: vec![Action {
-                msg: StakingMsg::Delegate {
-                    validator: validator.clone(),
-                    amount: coin(amount, NATIVE_DENOM),
+                msg: BankMsg::Send {
+                    to_address: to_address.clone(),
+                    amount: coins(amount, NATIVE_DENOM),
                 }
                 .into(),
                 gas_limit: Some(150_000),
@@ -300,10 +298,10 @@ fn check_task_create_fail_cases() -> StdResult<()> {
     let (mut app, cw_template_contract, _) = proper_instantiate();
     let contract_addr = cw_template_contract.addr();
 
-    let validator = String::from("you");
-    let amount = coin(3, NATIVE_DENOM);
-    let stake = StakingMsg::Delegate { validator, amount };
-    let msg: CosmosMsg = stake.clone().into();
+    let to_address = String::from("you");
+    let amount = coins(3, NATIVE_DENOM);
+    let bank = BankMsg::Send { to_address, amount };
+    let msg: CosmosMsg = bank.clone().into();
 
     let create_task_msg = ExecuteMsg::CreateTask {
         task: TaskRequest {
@@ -552,10 +550,10 @@ fn check_task_create_success() -> StdResult<()> {
     let (mut app, cw_template_contract, _) = proper_instantiate();
     let contract_addr = cw_template_contract.addr();
 
-    let validator = String::from("you");
-    let amount = coin(3, NATIVE_DENOM);
-    let stake = StakingMsg::Delegate { validator, amount };
-    let msg: CosmosMsg = stake.clone().into();
+    let to_address = String::from("you");
+    let amount = coins(3, NATIVE_DENOM);
+    let bank = BankMsg::Send { to_address, amount };
+    let msg: CosmosMsg = bank.clone().into();
 
     let create_task_msg = ExecuteMsg::CreateTask {
         task: TaskRequest {
@@ -645,10 +643,10 @@ fn check_task_with_queries_create_success() -> StdResult<()> {
     let (mut app, cw_template_contract, _) = proper_instantiate();
     let contract_addr = cw_template_contract.addr();
 
-    let validator = String::from("you");
-    let amount = coin(3, NATIVE_DENOM);
-    let stake = StakingMsg::Delegate { validator, amount };
-    let msg: CosmosMsg = stake.clone().into();
+    let to_address = String::from("you");
+    let amount = coins(3, NATIVE_DENOM);
+    let bank = BankMsg::Send { to_address, amount };
+    let msg: CosmosMsg = bank.clone().into();
 
     let create_task_msg = ExecuteMsg::CreateTask {
         task: TaskRequest {
@@ -720,10 +718,10 @@ fn check_task_with_queries_and_without_create_success() -> StdResult<()> {
     let (mut app, cw_template_contract, _) = proper_instantiate();
     let contract_addr = cw_template_contract.addr();
 
-    let validator = String::from("you");
-    let amount = coin(3, NATIVE_DENOM);
-    let stake = StakingMsg::Delegate { validator, amount };
-    let msg: CosmosMsg = stake.clone().into();
+    let to_address = String::from("you");
+    let amount = coins(3, NATIVE_DENOM);
+    let bank = BankMsg::Send { to_address, amount };
+    let msg: CosmosMsg = bank.clone().into();
 
     let with_queries_msg = ExecuteMsg::CreateTask {
         task: TaskRequest {
@@ -825,10 +823,10 @@ fn check_remove_create() -> StdResult<()> {
     let (mut app, cw_template_contract, _) = proper_instantiate();
     let contract_addr = cw_template_contract.addr();
 
-    let validator = String::from("you");
-    let amount = coin(3, NATIVE_DENOM);
-    let stake = StakingMsg::Delegate { validator, amount };
-    let msg: CosmosMsg = stake.clone().into();
+    let to_address = String::from("you");
+    let amount = coins(3, NATIVE_DENOM);
+    let bank = BankMsg::Send { to_address, amount };
+    let msg: CosmosMsg = bank.clone().into();
 
     let create_task_msg = ExecuteMsg::CreateTask {
         task: TaskRequest {
@@ -950,10 +948,10 @@ fn check_refill_create() -> StdResult<()> {
     let (mut app, cw_template_contract, _) = proper_instantiate();
     let contract_addr = cw_template_contract.addr();
 
-    let validator = String::from("you");
-    let amount = coin(3, NATIVE_DENOM);
-    let stake = StakingMsg::Delegate { validator, amount };
-    let msg: CosmosMsg = stake.clone().into();
+    let to_address = String::from("you");
+    let amount = coins(3, NATIVE_DENOM);
+    let bank = BankMsg::Send { to_address, amount };
+    let msg: CosmosMsg = bank.clone().into();
 
     let create_task_msg = ExecuteMsg::CreateTask {
         task: TaskRequest {
@@ -1051,10 +1049,10 @@ fn check_gas_minimum() {
     let (mut app, cw_template_contract, _) = proper_instantiate();
     let contract_addr = cw_template_contract.addr();
 
-    let validator = String::from("you");
-    let amount = coin(3, NATIVE_DENOM);
-    let stake = StakingMsg::Delegate { validator, amount };
-    let msg: CosmosMsg = stake.clone().into();
+    let to_address = String::from("you");
+    let amount = coins(3, NATIVE_DENOM);
+    let bank = BankMsg::Send { to_address, amount };
+    let msg: CosmosMsg = bank.clone().into();
     let gas_limit = 150_000;
     let base_gas = GAS_BASE_FEE;
 
@@ -1113,10 +1111,10 @@ fn check_gas_default() {
     let (mut app, cw_template_contract, _) = proper_instantiate();
     let contract_addr = cw_template_contract.addr();
 
-    let validator = String::from("you");
-    let amount = coin(3, NATIVE_DENOM);
-    let stake = StakingMsg::Delegate { validator, amount };
-    let msg: CosmosMsg = stake.clone().into();
+    let to_address = String::from("you");
+    let amount = coins(3, NATIVE_DENOM);
+    let bank = BankMsg::Send { to_address, amount };
+    let msg: CosmosMsg = bank.clone().into();
     let gas_limit = GAS_ACTION_FEE;
     let base_gas = GAS_BASE_FEE;
     // let send = BankMsg::Send {

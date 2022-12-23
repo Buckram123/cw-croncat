@@ -3,8 +3,8 @@ use crate::tests::helpers::{add_little_time, proper_instantiate};
 use crate::CwCroncat;
 use cosmwasm_std::testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR};
 use cosmwasm_std::{
-    coin, coins, from_slice, Addr, BlockInfo, CosmosMsg, DepsMut, MessageInfo, Response,
-    StakingMsg, StdResult, Storage,
+    coin, coins, from_slice, Addr, BankMsg, BlockInfo, CosmosMsg, DepsMut, MessageInfo, Response,
+    StdResult, Storage,
 };
 use cw_croncat_core::msg::{
     AgentResponse, AgentTaskResponse, ExecuteMsg, GetAgentIdsResponse, GetBalancesResponse,
@@ -34,10 +34,10 @@ fn get_task_total(app: &App, contract_addr: &Addr) -> usize {
 }
 
 fn add_task_exec(app: &mut App, contract_addr: &Addr, sender: &str) -> AppResponse {
-    let validator = String::from("you");
-    let amount = coin(3, NATIVE_DENOM);
-    let stake = StakingMsg::Delegate { validator, amount };
-    let msg: CosmosMsg = stake.clone().into();
+    let to_address = String::from("you");
+    let amount = coins(3, NATIVE_DENOM);
+    let bank = BankMsg::Send { to_address, amount };
+    let msg: CosmosMsg = bank.clone().into();
     let send_funds = coins(500_000, NATIVE_DENOM);
     app.execute_contract(
         Addr::unchecked(sender),
@@ -67,10 +67,10 @@ fn add_block_task_exec(
     sender: &str,
     block_num: u64,
 ) -> AppResponse {
-    let validator = String::from("you");
-    let amount = coin(3, NATIVE_DENOM);
-    let stake = StakingMsg::Delegate { validator, amount };
-    let msg: CosmosMsg = stake.clone().into();
+    let to_address = String::from("you");
+    let amount = coins(3, NATIVE_DENOM);
+    let bank = BankMsg::Send { to_address, amount };
+    let msg: CosmosMsg = bank.clone().into();
     let send_funds = coins(500_000, NATIVE_DENOM);
     app.execute_contract(
         Addr::unchecked(sender),
@@ -100,10 +100,10 @@ fn add_cron_task_exec(
     sender: &str,
     num_minutes: u64,
 ) -> AppResponse {
-    let validator = String::from("you");
-    let amount = coin(3, NATIVE_DENOM);
-    let stake = StakingMsg::Delegate { validator, amount };
-    let msg: CosmosMsg = stake.clone().into();
+    let to_address = String::from("you");
+    let amount = coins(3, NATIVE_DENOM);
+    let bank = BankMsg::Send { to_address, amount };
+    let msg: CosmosMsg = bank.clone().into();
     let send_funds = coins(500_000, NATIVE_DENOM);
     app.execute_contract(
         Addr::unchecked(sender),
@@ -133,10 +133,10 @@ fn contract_create_task(
     info: &MessageInfo,
 ) -> Result<Response, ContractError> {
     // try adding task without app
-    let validator = String::from("you");
-    let amount = coin(3, NATIVE_DENOM);
-    let stake = StakingMsg::Delegate { validator, amount };
-    let msg: CosmosMsg = stake.clone().into();
+    let to_address = String::from("you");
+    let amount = coins(3, NATIVE_DENOM);
+    let bank = BankMsg::Send { to_address, amount };
+    let msg: CosmosMsg = bank.clone().into();
     // let send_funds = coins(1, NATIVE_DENOM);
 
     contract.create_task(
@@ -620,7 +620,7 @@ fn accept_nomination_agent() {
     let res = add_task_exec(&mut app, &contract_addr, PARTICIPANT0);
     let task_hash = res.events[1].attributes[4].clone().value;
     assert_eq!(
-        "c2c2867b1833b35632ff663cd6dbaf4860b35cada0433699eaaeda90e6010297", task_hash,
+        "7aa4bddf7ea9ed1e550fe634840cc95a81b17fd2fd68165600e60fbf687fb92f", task_hash,
         "Unexpected task hash"
     );
 

@@ -406,3 +406,40 @@ fn hashing() {
     assert_eq!(encoded, task.to_hash());
     assert_eq!(bytes, task.to_hash_vec());
 }
+
+#[test]
+fn is_valid_msg_stake() {
+    // A task with CosmosMsg::Gov Vote should return false
+    let task = TaskRequest {
+        interval: Interval::Block(5),
+        boundary: Some(Boundary::Height {
+            start: Some(Uint64::from(4u64)),
+            end: None,
+        }),
+        stop_on_fail: false,
+        actions: vec![Action {
+            msg: CosmosMsg::Staking(cosmwasm_std::StakingMsg::Delegate {
+                validator: "address".to_string(),
+                amount: Coin::new(10, "atom"),
+            }),
+            gas_limit: Some(5),
+        }],
+        queries: None,
+        transforms: None,
+        cw20_coin: Default::default(),
+    };
+    assert_eq!(
+        CoreError::InvalidAction {},
+        task.is_valid_msg_calculate_usage(
+            &mock_dependencies().api,
+            &Addr::unchecked("alice"),
+            &Addr::unchecked("sender"),
+            &Addr::unchecked("bob"),
+            5,
+            5,
+            5,
+            5
+        )
+        .unwrap_err()
+    );
+}

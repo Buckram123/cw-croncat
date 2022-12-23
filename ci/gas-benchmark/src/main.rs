@@ -18,10 +18,8 @@ use crate::{
         max_gas_non_wasm_action,
     },
     test_cases::{
-        complete_simple_task, delegate_to_bob_and_alice_recurring, delegate_to_bob_recurring,
-        delegate_to_validator, delegate_to_validator_twice, send_cw20_to_bob_and_alice_recurring,
-        send_cw20_to_bob_recurring, send_cw20_to_insertable_addr, send_to_bob_and_alice_recurring,
-        send_to_bob_recurring,
+        complete_simple_task, send_cw20_to_bob_and_alice_recurring, send_cw20_to_bob_recurring,
+        send_cw20_to_insertable_addr, send_to_bob_and_alice_recurring, send_to_bob_recurring,
     },
     test_cases_with_queries::complete_simple_rule,
     types::ApproxGasCosts,
@@ -75,19 +73,6 @@ fn main() -> Result<()> {
             100,
             "send_two_cw20",
         ),
-        (delegate_to_validator(&denom), 100, "delegate_once"),
-        (delegate_to_validator_twice(&denom), 100, "delegate_twice"),
-        // Failed Stake tasks
-        (
-            delegate_to_bob_recurring(&denom),
-            100,
-            "failed_delegate_once",
-        ),
-        (
-            delegate_to_bob_and_alice_recurring(&denom),
-            100,
-            "failed_delegate_twice",
-        ),
     ];
     let gas_fees_usage = complete_tasks_for_three_times(
         &mut orc,
@@ -107,6 +92,10 @@ fn main() -> Result<()> {
         "approx_gas_per_action: {}\n",
         cost_per_send.approx_gas_per_action()
     );
+    println!(
+        "max_gas_per_action: {}\n",
+        cost_per_send.max_gas_per_action()
+    );
 
     let cost_per_cw20 = cost_approxes(&gas_fees_usage[2], &gas_fees_usage[3]);
     println!("wasm reports:");
@@ -119,40 +108,12 @@ fn main() -> Result<()> {
         "approx_gas_per_action: {}\n",
         cost_per_cw20.approx_gas_per_action()
     );
-
-    let cost_per_delegate = cost_approxes(&gas_fees_usage[4], &gas_fees_usage[5]);
-    println!("delegate reports:");
-    println!("approx_base_gas: {}", cost_per_delegate.approx_base_gas());
     println!(
-        "approx_gas_for_unregister: {}",
-        cost_per_delegate.approx_gas_for_unregister()
-    );
-    println!(
-        "approx_gas_per_action: {}\n",
-        cost_per_delegate.approx_gas_per_action()
+        "max_gas_per_action: {}\n",
+        cost_per_cw20.max_gas_per_action()
     );
 
-    let cost_per_failed_delegate = cost_approxes(&gas_fees_usage[6], &gas_fees_usage[7]);
-    println!("failed delegate reports:");
-    println!(
-        "approx_base_gas: {}",
-        cost_per_failed_delegate.approx_base_gas()
-    );
-    println!(
-        "approx_gas_for_unregister: {}",
-        cost_per_failed_delegate.approx_gas_for_unregister()
-    );
-    println!(
-        "max_gas_per_action: {}",
-        cost_per_failed_delegate.max_gas_per_action()
-    );
-    println!(
-        "approx_gas_per_action: {}\n",
-        cost_per_failed_delegate.approx_gas_per_action()
-    );
-
-    let non_wasm_reports: Vec<ApproxGasCosts> =
-        vec![cost_per_send, cost_per_failed_delegate, cost_per_delegate];
+    let non_wasm_reports: Vec<ApproxGasCosts> = vec![cost_per_send];
     let wasm_reports: Vec<ApproxGasCosts> = vec![cost_per_cw20];
     let together_reports: Vec<ApproxGasCosts> = non_wasm_reports
         .iter()
@@ -233,7 +194,7 @@ fn main() -> Result<()> {
             )?
             .data()?;
         if balance_res.balance != cosmwasm_std::Uint128::new(10) {
-            return Err(anyhow::anyhow!("Not transfered"));
+            return Err(anyhow::anyhow!("Not transferred"));
         }
     }
     let gas_report_dir = std::env::var("GAS_OUT_DIR").unwrap_or_else(|_| "gas_reports".to_string());

@@ -1,4 +1,4 @@
-use crate::state::{Config, TaskInfo};
+use crate::state::TaskInfo;
 use crate::{helpers::*, ContractError};
 use cosmwasm_std::Uint64;
 use cosmwasm_std::{Addr, Env};
@@ -17,7 +17,7 @@ pub trait Balancer<'a> {
         &mut self,
         deps: &Deps,
         env: &Env,
-        config: &Item<'a, Config>,
+        active_indices: &Item<'a, Vec<(SlotType, u32, u32)>>,
         active_agents: &Item<'a, Vec<Addr>>,
         agent_id: Addr,
         slot_items: (Option<u64>, Option<u64>),
@@ -25,7 +25,7 @@ pub trait Balancer<'a> {
     fn on_agent_unregister(
         &self,
         storage: &'a mut dyn Storage,
-        config: &Item<'a, Config>,
+        active_indices: &Item<'a, Vec<(SlotType, u32, u32)>>,
         active_agents: &Item<'a, Vec<Addr>>,
         agent_id: Addr,
     ) -> Result<(), ContractError>;
@@ -33,7 +33,7 @@ pub trait Balancer<'a> {
         &self,
         storage: &'a mut dyn Storage,
         _env: &Env,
-        config: &Item<'a, Config>,
+        active_indices: &Item<'a, Vec<(SlotType, u32, u32)>>,
         active_agents: &Item<'a, Vec<Addr>>,
         task_info: &TaskInfo,
     ) -> Result<(), ContractError>;
@@ -86,18 +86,17 @@ impl<'a> Balancer<'a> for RoundRobinBalancer {
         &mut self,
         deps: &Deps,
         _env: &Env,
-        config: &Item<'a, Config>,
+        active_indices: &Item<'a, Vec<(SlotType, u32, u32)>>,
         active_agents: &Item<'a, Vec<Addr>>,
         agent_id: Addr,
         slot_items: (Option<u64>, Option<u64>),
     ) -> Result<Option<AgentTaskResponse>, ContractError> {
-        let conf: Config = config.load(deps.storage)?;
         let active = active_agents.load(deps.storage)?;
         if !active.contains(&agent_id) {
             return Err(ContractError::AgentNotRegistered {});
         }
         let agent_count = active.len() as u64;
-        let agent_active_indices_config = conf.agent_active_indices;
+        let agent_active_indices_state = active_indices.load(deps.storage)?;
         let agent_active_indices: Vec<usize> = (0..active.len()).collect();
         let agent_index = active
             .iter()
@@ -129,7 +128,7 @@ impl<'a> Balancer<'a> for RoundRobinBalancer {
                             let leftover = total_tasks % agent_count;
 
                             let mut rich_agents: Vec<(SlotType, u32, u32)> =
-                                agent_active_indices_config
+                                agent_active_indices_state
                                     .clone()
                                     .into_iter()
                                     .filter(|e| e.2 > 0)
@@ -182,7 +181,7 @@ impl<'a> Balancer<'a> for RoundRobinBalancer {
                     if total_tasks < 1 {
                         return Ok((Uint64::zero(), Uint64::zero()));
                     }
-                    let mut rich_agents: Vec<(SlotType, u32, u32)> = agent_active_indices_config
+                    let mut rich_agents: Vec<(SlotType, u32, u32)> = agent_active_indices_state
                         .clone()
                         .into_iter()
                         .filter(|e| e.2 > 0)
@@ -244,21 +243,20 @@ impl<'a> Balancer<'a> for RoundRobinBalancer {
     fn on_agent_unregister(
         &self,
         storage: &'a mut dyn Storage,
-        config: &Item<'a, Config>,
+        active_indices: &Item<'a, Vec<(SlotType, u32, u32)>>,
         active_agents: &Item<'a, Vec<Addr>>,
         agent_id: Addr,
     ) -> Result<(), ContractError> {
-        let mut conf: Config = config.load(storage)?;
-        let indices = conf.agent_active_indices.as_mut();
+        let mut indices = active_indices.load(storage)?;
         let active = active_agents.load(storage)?;
         let agent_index = active
             .iter()
             .position(|x| x == &agent_id)
             .ok_or(ContractError::AgentNotRegistered {})? as u32;
 
-        self.remove_agent_and_rebalance(indices, agent_index);
+        self.remove_agent_and_rebalance(&mut indices, agent_index);
 
-        config.save(storage, &conf)?;
+        active_indices.save(storage, &indices)?;
         Ok(())
     }
 
@@ -266,7 +264,7 @@ impl<'a> Balancer<'a> for RoundRobinBalancer {
         &self,
         storage: &'a mut dyn Storage,
         _env: &Env,
-        config: &Item<'a, Config>,
+        active_indices: &Item<'a, Vec<(SlotType, u32, u32)>>,
         active_agents: &Item<'a, Vec<Addr>>,
         task_info: &TaskInfo,
     ) -> Result<(), ContractError> {
@@ -274,8 +272,7 @@ impl<'a> Balancer<'a> for RoundRobinBalancer {
             return Ok(());
         };
 
-        let mut conf: Config = config.load(storage)?;
-        let indices = conf.agent_active_indices.as_mut();
+        let mut indices = active_indices.load(storage)?;
         let active = active_agents.load(storage)?;
         let agent_id = &task_info.agent_id;
         let slot_kind = task_info.slot_kind;
@@ -284,8 +281,8 @@ impl<'a> Balancer<'a> for RoundRobinBalancer {
             .position(|x| x == agent_id)
             .ok_or(ContractError::AgentNotRegistered {})? as u32;
 
-        self.update_or_append(indices, (slot_kind, agent_index, 1));
-        config.save(storage, &conf)?;
+        self.update_or_append(&mut indices, (slot_kind, agent_index, 1));
+        active_indices.save(storage, &indices)?;
         Ok(())
     }
 }

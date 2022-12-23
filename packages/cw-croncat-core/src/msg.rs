@@ -38,7 +38,7 @@ use serde::{Deserialize, Serialize};
 pub struct Croncat {
     pub(crate) agent: Option<Agent>,
     pub(crate) task: Option<Task>,
-    pub(crate) config_response: Option<GetConfigResponse>,
+    pub(crate) config_response: Option<Config>,
     pub(crate) balance_response: Option<GetBalancesResponse>,
     pub(crate) get_agent_ids_response: Option<GetAgentIdsResponse>,
     pub(crate) get_agent_tasks_response: Option<AgentTaskResponse>,
@@ -500,26 +500,42 @@ pub struct QueryConstruct {
     pub queries: Vec<CroncatQuery>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-pub struct GetConfigResponse {
+#[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
+pub struct Config {
+    // Runtime
     pub paused: bool,
     pub owner_id: Addr,
-    // pub treasury_id: Option<Addr>,
-    pub min_tasks_per_agent: u64,
-    pub agents_eject_threshold: u64,
-    pub agent_active_indices: Vec<(SlotType, u32, u32)>,
-    pub agent_nomination_duration: u16,
 
+    // Agent management
+    // The minimum number of tasks per agent
+    // Example: 10
+    // Explanation: For every 1 agent, 10 tasks per slot are available.
+    // NOTE: Caveat, when there are odd number of tasks or agents, the overflow will be available to first-come, first-serve. This doesn't negate the possibility of a failed txn from race case choosing winner inside a block.
+    // NOTE: The overflow will be adjusted to be handled by sweeper in next implementation.
+    pub min_tasks_per_agent: u64,
+    // How many slots an agent can miss before being removed from the active queue
+    pub agents_eject_threshold: u64,
+    // The duration a prospective agent has to nominate themselves.
+    // When a task is created such that a new agent can join,
+    // The agent at the zeroth index of the pending agent queue has this time to nominate
+    // The agent at the first index has twice this time to nominate (which would remove the former agent from the pending queue)
+    // Value is in seconds
+    pub agent_nomination_duration: u16,
     pub cw_rules_addr: Addr,
 
+    // Economics
     pub agent_fee: u64,
     pub gas_price: GasPrice,
     pub gas_base_fee: u64,
     pub gas_action_fee: u64,
+    pub gas_query_fee: u64,
+    pub gas_wasm_query_fee: u64,
     pub proxy_callback_gas: u32,
     pub slot_granularity_time: u64,
 
-    pub cw20_whitelist: Vec<Addr>,
+    // Treasury
+    // pub treasury_id: Option<Addr>,
+    pub cw20_whitelist: Vec<Addr>, // TODO: Consider fee structure for whitelisted CW20s
     pub native_denom: String,
 
     // The default amount of tasks to query

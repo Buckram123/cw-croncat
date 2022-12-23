@@ -4,9 +4,7 @@ use crate::tests::helpers::NATIVE_DENOM;
 use cosmwasm_std::testing::{mock_dependencies_with_balance, mock_env, mock_info};
 use cosmwasm_std::{coin, coins, from_binary, Addr, MessageInfo};
 use cw20::Balance;
-use cw_croncat_core::msg::{
-    ExecuteMsg, GetBalancesResponse, GetConfigResponse, InstantiateMsg, QueryMsg,
-};
+use cw_croncat_core::msg::{Config, ExecuteMsg, GetBalancesResponse, InstantiateMsg, QueryMsg};
 
 #[test]
 fn update_settings() {
@@ -84,7 +82,7 @@ fn update_settings() {
     let res = store
         .query(deps.as_ref(), mock_env(), QueryMsg::GetConfig {})
         .unwrap();
-    let value: GetConfigResponse = from_binary(&res).unwrap();
+    let value: Config = from_binary(&res).unwrap();
     assert_eq!(true, value.paused);
     assert_eq!(info.sender, value.owner_id);
 }

@@ -8,7 +8,6 @@ export type Addr = string;
 export type Timestamp = Uint64;
 export type Uint64 = string;
 export type Uint128 = string;
-export type SlotType = "Block" | "Cron";
 export type AgentStatus = "Active" | "Pending" | "Nominated";
 export type CosmosMsgForEmpty = {
   bank: BankMsg;
@@ -194,7 +193,7 @@ export type SmartQueries = SmartQuery[];
 export interface Croncat {
   Agent?: Agent | null;
   BalanceResponse?: GetBalancesResponse | null;
-  ConfigResponse?: GetConfigResponse | null;
+  ConfigResponse?: Config | null;
   GetAgentIdsResponse?: GetAgentIdsResponse | null;
   GetAgentResponse?: (AgentResponse | null) | null;
   GetAgentTasksResponse?: AgentTaskResponse | null;
@@ -235,8 +234,7 @@ export interface Coin {
   denom: string;
   [k: string]: unknown;
 }
-export interface GetConfigResponse {
-  agent_active_indices: [SlotType, number, number][];
+export interface Config {
   agent_fee: number;
   agent_nomination_duration: number;
   agents_eject_threshold: number;
@@ -245,6 +243,8 @@ export interface GetConfigResponse {
   gas_action_fee: number;
   gas_base_fee: number;
   gas_price: GasPrice;
+  gas_query_fee: number;
+  gas_wasm_query_fee: number;
   limit: number;
   min_tasks_per_agent: number;
   native_denom: string;
@@ -511,6 +511,26 @@ export interface Cw20ReceiveMsg {
 }
 export type GetAgentResponse = AgentResponse | null;
 export type GetAgentTasksResponse = TaskResponse | null;
+export interface GetConfigResponse {
+  agent_fee: number;
+  agent_nomination_duration: number;
+  agents_eject_threshold: number;
+  cw20_whitelist: Addr[];
+  cw_rules_addr: Addr;
+  gas_action_fee: number;
+  gas_base_fee: number;
+  gas_price: GasPrice;
+  gas_query_fee: number;
+  gas_wasm_query_fee: number;
+  limit: number;
+  min_tasks_per_agent: number;
+  native_denom: string;
+  owner_id: Addr;
+  paused: boolean;
+  proxy_callback_gas: number;
+  slot_granularity_time: number;
+  [k: string]: unknown;
+}
 export type GetTaskHashResponse = string;
 export type GetTaskResponse = TaskResponse | null;
 export type GetTasksByOwnerResponse = TaskResponse[];

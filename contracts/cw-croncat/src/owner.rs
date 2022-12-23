@@ -5,32 +5,12 @@ use cosmwasm_std::{
     StdResult, SubMsg, Uint128, WasmMsg,
 };
 use cw20::{Balance, Cw20CoinVerified, Cw20ExecuteMsg};
-use cw_croncat_core::msg::{
-    ExecuteMsg, GetBalancesResponse, GetConfigResponse, GetWalletBalancesResponse,
-};
+use cw_croncat_core::msg::{ExecuteMsg, GetBalancesResponse, GetWalletBalancesResponse};
 
 impl<'a> CwCroncat<'a> {
-    pub(crate) fn query_config(&self, deps: Deps) -> StdResult<GetConfigResponse> {
+    pub(crate) fn query_config(&self, deps: Deps) -> StdResult<Config> {
         let c: Config = self.config.load(deps.storage)?;
-        Ok(GetConfigResponse {
-            paused: c.paused,
-            owner_id: c.owner_id,
-            // treasury_id: c.treasury_id,
-            min_tasks_per_agent: c.min_tasks_per_agent,
-            agent_active_indices: c.agent_active_indices,
-            agents_eject_threshold: c.agents_eject_threshold,
-            native_denom: c.native_denom,
-            agent_fee: c.agent_fee,
-            gas_price: c.gas_price,
-            proxy_callback_gas: c.proxy_callback_gas,
-            slot_granularity_time: c.slot_granularity_time,
-            cw_rules_addr: c.cw_rules_addr,
-            agent_nomination_duration: c.agent_nomination_duration,
-            gas_base_fee: c.gas_base_fee,
-            gas_action_fee: c.gas_action_fee,
-            cw20_whitelist: c.cw20_whitelist,
-            limit: c.limit,
-        })
+        Ok(c)
     }
 
     pub(crate) fn query_balances(
@@ -152,7 +132,6 @@ impl<'a> CwCroncat<'a> {
                             owner_id: owner_id.unwrap_or(old_config.owner_id),
                             min_tasks_per_agent: min_tasks_per_agent
                                 .unwrap_or(old_config.min_tasks_per_agent),
-                            agent_active_indices: old_config.agent_active_indices,
                             agents_eject_threshold: agents_eject_threshold
                                 .unwrap_or(old_config.agents_eject_threshold),
                             agent_nomination_duration: old_config.agent_nomination_duration,
@@ -196,13 +175,6 @@ impl<'a> CwCroncat<'a> {
             //         .to_string(),
             // )
             .add_attribute("min_tasks_per_agent", c.min_tasks_per_agent.to_string())
-            .add_attribute(
-                "agent_active_indices",
-                c.agent_active_indices
-                    .iter()
-                    .map(|a| format!("{:?}.{}", a.0, a.1))
-                    .collect::<String>(),
-            )
             .add_attribute(
                 "agents_eject_threshold",
                 c.agents_eject_threshold.to_string(),

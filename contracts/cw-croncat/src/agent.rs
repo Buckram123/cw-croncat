@@ -102,7 +102,7 @@ impl<'a> CwCroncat<'a> {
             .get_agent_tasks(
                 &deps,
                 &env,
-                &self.config,
+                &self.agent_active_indices,
                 &self.agent_active_queue,
                 account_id,
                 (Some(block_slots as u64), Some(time_slots as u64)),
@@ -404,7 +404,7 @@ impl<'a> CwCroncat<'a> {
             //Notify the balancer agent has been removed, to rebalance itself
             self.balancer.on_agent_unregister(
                 storage,
-                &self.config,
+                &self.agent_active_indices,
                 &self.agent_active_queue,
                 agent_id.clone(),
             )?;

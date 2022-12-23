@@ -1,54 +1,24 @@
 use crate::balancer::{Balancer, BalancerMode, RoundRobinBalancer};
-use crate::contract::{
-    GAS_ACTION_FEE, GAS_ADJUSTMENT_NUMERATOR_DEFAULT, GAS_BASE_FEE, GAS_DENOMINATOR,
-    GAS_NUMERATOR_DEFAULT, GAS_QUERY_FEE, GAS_WASM_QUERY_FEE,
-};
-use crate::state::{Config, TaskInfo};
+use crate::state::TaskInfo;
 use crate::tests::helpers::{default_task, AGENT0, AGENT1, AGENT2, AGENT3, AGENT4};
 use cosmwasm_std::testing::{mock_dependencies_with_balance, mock_env};
 use cosmwasm_std::{coins, Addr};
-use cw_croncat_core::types::{GasPrice, SlotType};
+use cw_croncat_core::types::SlotType;
 
 use crate::CwCroncat;
 
-use super::helpers::{ADMIN, NATIVE_DENOM};
+use super::helpers::NATIVE_DENOM;
 
-fn mock_config() -> Config {
-    Config {
-        paused: false,
-        owner_id: Addr::unchecked(ADMIN),
-        // treasury_id: None,
-        min_tasks_per_agent: 3,
-        agent_active_indices: Vec::<(SlotType, u32, u32)>::with_capacity(0),
-        agents_eject_threshold: 600, // how many slots an agent can miss before being ejected. 10 * 60 = 1hr
-        agent_fee: 5,
-        gas_price: GasPrice {
-            numerator: GAS_NUMERATOR_DEFAULT,
-            denominator: GAS_DENOMINATOR,
-            gas_adjustment_numerator: GAS_ADJUSTMENT_NUMERATOR_DEFAULT,
-        },
-        gas_action_fee: GAS_ACTION_FEE,
-        gas_query_fee: GAS_QUERY_FEE,
-        gas_wasm_query_fee: GAS_WASM_QUERY_FEE,
-        proxy_callback_gas: 3,
-        slot_granularity_time: 60_000_000_000,
-        native_denom: NATIVE_DENOM.to_owned(),
-        cw20_whitelist: vec![],
-        agent_nomination_duration: 9,
-        limit: 100,
-        cw_rules_addr: Addr::unchecked("todo"),
-        gas_base_fee: GAS_BASE_FEE,
-    }
-}
 #[test]
 fn test_agent_has_valid_task_count_ao_mode() {
     let store = CwCroncat::default();
     let mut deps = mock_dependencies_with_balance(&coins(200, NATIVE_DENOM));
     let env = mock_env();
     let mut balancer = RoundRobinBalancer::default();
-    let config = mock_config();
-
-    store.config.save(&mut deps.storage, &config).unwrap();
+    store
+        .agent_active_indices
+        .save(&mut deps.storage, &vec![])
+        .unwrap();
 
     let mut active_agents: Vec<Addr> = store
         .agent_active_queue
@@ -72,7 +42,7 @@ fn test_agent_has_valid_task_count_ao_mode() {
         .get_agent_tasks(
             &deps.as_ref(),
             &env.clone(),
-            &store.config,
+            &store.agent_active_indices,
             &store.agent_active_queue,
             Addr::unchecked(AGENT0),
             slot,
@@ -88,7 +58,7 @@ fn test_agent_has_valid_task_count_ao_mode() {
         .get_agent_tasks(
             &deps.as_ref(),
             &env.clone(),
-            &store.config,
+            &store.agent_active_indices,
             &store.agent_active_queue,
             Addr::unchecked(AGENT0),
             slot,
@@ -104,7 +74,7 @@ fn test_agent_has_valid_task_count_ao_mode() {
         .get_agent_tasks(
             &deps.as_ref(),
             &env.clone(),
-            &store.config,
+            &store.agent_active_indices,
             &store.agent_active_queue,
             Addr::unchecked(AGENT0),
             slot,
@@ -121,9 +91,10 @@ fn test_check_valid_agents_get_extra_tasks_ao_mode() {
     let mut deps = mock_dependencies_with_balance(&coins(200, NATIVE_DENOM));
     let env = mock_env();
     let mut balancer = RoundRobinBalancer::default();
-    let config = mock_config();
-
-    store.config.save(&mut deps.storage, &config).unwrap();
+    store
+        .agent_active_indices
+        .save(&mut deps.storage, &vec![])
+        .unwrap();
 
     let mut active_agents: Vec<Addr> = store
         .agent_active_queue
@@ -149,7 +120,7 @@ fn test_check_valid_agents_get_extra_tasks_ao_mode() {
         .get_agent_tasks(
             &deps.as_ref(),
             &env.clone(),
-            &store.config,
+            &store.agent_active_indices,
             &store.agent_active_queue,
             Addr::unchecked(AGENT0),
             slot,
@@ -167,7 +138,7 @@ fn test_check_valid_agents_get_extra_tasks_ao_mode() {
         .get_agent_tasks(
             &deps.as_ref(),
             &env.clone(),
-            &store.config,
+            &store.agent_active_indices,
             &store.agent_active_queue,
             Addr::unchecked(AGENT1),
             slot,
@@ -185,7 +156,7 @@ fn test_check_valid_agents_get_extra_tasks_ao_mode() {
         .get_agent_tasks(
             &deps.as_ref(),
             &env.clone(),
-            &store.config,
+            &store.agent_active_indices,
             &store.agent_active_queue,
             Addr::unchecked(AGENT3),
             slot,
@@ -204,9 +175,10 @@ fn test_check_valid_agents_get_extra_tasks_eq_mode() {
     let mut deps = mock_dependencies_with_balance(&coins(200, NATIVE_DENOM));
     let env = mock_env();
     let mut balancer = RoundRobinBalancer::new(BalancerMode::Equalizer);
-    let config = mock_config();
-
-    store.config.save(&mut deps.storage, &config).unwrap();
+    store
+        .agent_active_indices
+        .save(&mut deps.storage, &vec![])
+        .unwrap();
 
     let mut active_agents: Vec<Addr> = store
         .agent_active_queue
@@ -239,7 +211,7 @@ fn test_check_valid_agents_get_extra_tasks_eq_mode() {
         .on_task_completed(
             &mut deps.storage,
             &env,
-            &store.config,
+            &store.agent_active_indices,
             &store.agent_active_queue,
             &task_info,
         )
@@ -251,7 +223,7 @@ fn test_check_valid_agents_get_extra_tasks_eq_mode() {
         .get_agent_tasks(
             &deps.as_ref(),
             &env.clone(),
-            &store.config,
+            &store.agent_active_indices,
             &store.agent_active_queue,
             Addr::unchecked(AGENT0),
             slot,
@@ -270,7 +242,7 @@ fn test_check_valid_agents_get_extra_tasks_eq_mode() {
         .get_agent_tasks(
             &deps.as_ref(),
             &env.clone(),
-            &store.config,
+            &store.agent_active_indices,
             &store.agent_active_queue,
             Addr::unchecked(AGENT1),
             slot,
@@ -288,7 +260,7 @@ fn test_check_valid_agents_get_extra_tasks_eq_mode() {
         .get_agent_tasks(
             &deps.as_ref(),
             &env.clone(),
-            &store.config,
+            &store.agent_active_indices,
             &store.agent_active_queue,
             Addr::unchecked(AGENT2),
             slot,
@@ -306,7 +278,7 @@ fn test_check_valid_agents_get_extra_tasks_eq_mode() {
         .get_agent_tasks(
             &deps.as_ref(),
             &env.clone(),
-            &store.config,
+            &store.agent_active_indices,
             &store.agent_active_queue,
             Addr::unchecked(AGENT3),
             slot,
@@ -325,9 +297,10 @@ fn test_on_task_completed() {
     let mut deps = mock_dependencies_with_balance(&coins(200, NATIVE_DENOM));
     let env = mock_env();
     let balancer = RoundRobinBalancer::default();
-    let mut config = mock_config();
-
-    store.config.save(&mut deps.storage, &config).unwrap();
+    store
+        .agent_active_indices
+        .save(&mut deps.storage, &vec![])
+        .unwrap();
 
     let mut active_agents: Vec<Addr> = store
         .agent_active_queue
@@ -354,21 +327,25 @@ fn test_on_task_completed() {
         agent_id: Addr::unchecked(AGENT0),
         slot_kind: SlotType::Block,
     };
+    let mut agent_active_indices = store.agent_active_indices.load(&mut deps.storage).unwrap();
 
-    balancer.update_or_append(&mut config.agent_active_indices, (SlotType::Block, 0, 10));
-    store.config.save(&mut deps.storage, &config).unwrap();
+    balancer.update_or_append(&mut agent_active_indices, (SlotType::Block, 0, 10));
+    store
+        .agent_active_indices
+        .save(&mut deps.storage, &agent_active_indices)
+        .unwrap();
     balancer
         .on_task_completed(
             &mut deps.storage,
             &env,
-            &store.config,
+            &store.agent_active_indices,
             &store.agent_active_queue,
             &task_info,
         )
         .unwrap();
 
-    config = store.config.load(&mut deps.storage).unwrap();
-    assert_eq!(config.agent_active_indices, vec![(SlotType::Block, 0, 11)])
+    agent_active_indices = store.agent_active_indices.load(&mut deps.storage).unwrap();
+    assert_eq!(agent_active_indices, vec![(SlotType::Block, 0, 11)])
 }
 
 #[test]
@@ -376,9 +353,10 @@ fn test_on_agent_unregister() {
     let store = CwCroncat::default();
     let mut deps = mock_dependencies_with_balance(&coins(200, NATIVE_DENOM));
     let balancer = RoundRobinBalancer::default();
-    let mut config = mock_config();
-
-    store.config.save(&mut deps.storage, &config).unwrap();
+    store
+        .agent_active_indices
+        .save(&mut deps.storage, &vec![])
+        .unwrap();
 
     let mut active_agents: Vec<Addr> = store
         .agent_active_queue
@@ -398,18 +376,22 @@ fn test_on_agent_unregister() {
         .save(&mut deps.storage, &active_agents)
         .unwrap();
 
-    balancer.update_or_append(&mut config.agent_active_indices, (SlotType::Block, 0, 1));
-    balancer.update_or_append(&mut config.agent_active_indices, (SlotType::Cron, 0, 1));
-    store.config.save(&mut deps.storage, &config).unwrap();
+    let mut agent_active_indices = store.agent_active_indices.load(&mut deps.storage).unwrap();
+    balancer.update_or_append(&mut agent_active_indices, (SlotType::Block, 0, 1));
+    balancer.update_or_append(&mut agent_active_indices, (SlotType::Cron, 0, 1));
+    store
+        .agent_active_indices
+        .save(&mut deps.storage, &agent_active_indices)
+        .unwrap();
     balancer
         .on_agent_unregister(
             &mut deps.storage,
-            &store.config,
+            &store.agent_active_indices,
             &store.agent_active_queue,
             Addr::unchecked(AGENT0),
         )
         .unwrap();
 
-    config = store.config.load(&mut deps.storage).unwrap();
-    assert_eq!(config.agent_active_indices, vec![])
+    agent_active_indices = store.agent_active_indices.load(&mut deps.storage).unwrap();
+    assert_eq!(agent_active_indices, vec![])
 }

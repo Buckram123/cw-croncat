@@ -4,13 +4,11 @@ use cw20::Cw20CoinVerified;
 use crate::{
     error::CoreError,
     msg::{
-        AgentResponse, AgentTaskResponse, Croncat, GetAgentIdsResponse, GetBalancesResponse,
-        GetConfigResponse, GetSlotHashesResponse, GetSlotIdsResponse, GetWalletBalancesResponse,
+        AgentResponse, AgentTaskResponse, Config, Croncat, GetAgentIdsResponse,
+        GetBalancesResponse, GetSlotHashesResponse, GetSlotIdsResponse, GetWalletBalancesResponse,
         TaskRequest, TaskRequestBuilder, TaskResponse,
     },
-    types::{
-        Action, Agent, AgentStatus, Boundary, BoundaryValidated, GasPrice, Interval, SlotType, Task,
-    },
+    types::{Action, Agent, AgentStatus, Boundary, BoundaryValidated, GasPrice, Interval, Task},
 };
 
 #[test]
@@ -50,11 +48,10 @@ fn everything_can_be_de_serialized() {
     }
     .into();
 
-    let config_response = GetConfigResponse {
+    let config_response = Config {
         paused: true,
         owner_id: Addr::unchecked("bob"),
         min_tasks_per_agent: 5,
-        agent_active_indices: vec![(SlotType::Block, 10, 5)],
         agents_eject_threshold: 5,
         agent_fee: 5,
         gas_price: GasPrice {
@@ -69,6 +66,8 @@ fn everything_can_be_de_serialized() {
         agent_nomination_duration: 10,
         gas_base_fee: 1,
         gas_action_fee: 2,
+        gas_query_fee: 3,
+        gas_wasm_query_fee: 4,
         cw20_whitelist: vec![],
         limit: 100,
     }

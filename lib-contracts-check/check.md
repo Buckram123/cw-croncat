@@ -39,6 +39,8 @@ $BINARY tx wasm execute $CONTRACT '{"validate_boundary_lib_config_lib2_ex":{"int
 # Simple transfer
 $BINARY tx wasm execute $CONTRACT '{"transfer_single_coin":{"funds": []}}' --from validator $TXFLAG -y | grep gas_used
 
+# Simple transfer
+$BINARY tx wasm execute $CONTRACT '{"do_nothing":{}}' --from validator $TXFLAG -y | grep gas_used
 ```
 
 ## RESULTS

@@ -60,6 +60,7 @@ pub enum ExecuteMsg {
     TransferSingleCoin {
         funds: Vec<Coin>,
     },
+    DoNothing {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]

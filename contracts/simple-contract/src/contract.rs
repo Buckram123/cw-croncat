@@ -164,6 +164,9 @@ pub fn execute(
             };
             Ok(Response::new().add_message(msg))
         }
+        ExecuteMsg::DoNothing {} => {
+            Ok(Response::new())
+        }
     }
 }
 

@@ -1,5 +1,5 @@
 ```bash
-just juno-local
+just optimize juno-local
 # Wait some time so chain started
 . ./lib-contracts-check/deploy_everything.sh
 ```
@@ -35,6 +35,10 @@ $BINARY tx wasm execute $CONTRACT '{"validate_boundary_config_lib_ex":{"interval
 
 # Validate boundary execute and get config(different contracts)
 $BINARY tx wasm execute $CONTRACT '{"validate_boundary_lib_config_lib2_ex":{"interval": "Once"}}' --from validator $TXFLAG -y | grep gas_used
+
+# Simple transfer
+$BINARY tx wasm execute $CONTRACT '{"transfer_single_coin":{"funds": []}}' --from validator $TXFLAG -y | grep gas_used
+
 ```
 
 ## RESULTS

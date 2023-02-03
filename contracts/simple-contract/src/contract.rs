@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_slice, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
-    StdResult, SubMsg, WasmMsg,
+    from_slice, to_binary, BankMsg, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response,
+    StdError, StdResult, SubMsg, WasmMsg,
 };
 use cw_croncat_core::types::BoundaryValidated;
 use lib_contract::state::Config;
@@ -30,7 +30,7 @@ pub fn instantiate(
 pub fn execute(
     deps: DepsMut,
     _env: Env,
-    _info: MessageInfo,
+    info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
@@ -156,6 +156,13 @@ pub fn execute(
             Ok(Response::new()
                 .add_message(validate_exec)
                 .add_message(boundary_exec))
+        }
+        ExecuteMsg::TransferSingleCoin { funds } => {
+            let msg = BankMsg::Send {
+                to_address: info.sender.into_string(),
+                amount: funds,
+            };
+            Ok(Response::new().add_message(msg))
         }
     }
 }

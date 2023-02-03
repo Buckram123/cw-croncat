@@ -1,3 +1,4 @@
+use cosmwasm_std::Coin;
 use cw_croncat_core::types::Boundary;
 use cw_croncat_core::types::Interval;
 use schemars::JsonSchema;
@@ -54,6 +55,10 @@ pub enum ExecuteMsg {
     ValidateBoundaryLibConfigLib2Ex {
         boundary: Option<Boundary>,
         interval: Interval,
+    },
+
+    TransferSingleCoin {
+        funds: Vec<Coin>,
     },
 }
 

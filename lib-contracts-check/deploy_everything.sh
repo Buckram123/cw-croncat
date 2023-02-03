@@ -1,6 +1,5 @@
 BINARY="docker exec -i cosmwasm junod"
 set -e
-just optimize
 TXFLAG="--chain-id testing --gas-prices 0.025ujunox --gas auto --gas-adjustment 1.3 --broadcast-mode block"
 docker cp 'artifacts/' cosmwasm:/artifacts
 
@@ -13,6 +12,6 @@ LIB=$($BINARY query wasm list-contract-by-code $LIB_ID --output json | jq -r '.c
 $BINARY tx wasm instantiate $LIB_ID '{}' --from validator --label "cw_rules" $TXFLAG -y --no-admin
 LIB2=$($BINARY query wasm list-contract-by-code $LIB_ID --output json | jq -r '.contracts[-1]')
 
-$BINARY tx wasm instantiate $CONTRACT_ID '{"lib_contract_addr":"'$LIB'", "lib_contract_addr2": "'$LIB2'"}' --from validator --label "cw_rules" $TXFLAG -y --no-admin
+$BINARY tx wasm instantiate $CONTRACT_ID '{"lib_contract_addr":"'$LIB'", "lib_contract_addr2": "'$LIB2'"}' --from validator --label "cw_rules" $TXFLAG -y --no-admin --amount 1000000ujunox
 CONTRACT=$($BINARY query wasm list-contract-by-code $CONTRACT_ID --output json | jq -r '.contracts[-1]')
 set +e
